@@ -1,0 +1,223 @@
+#Launches at point of intitial deploy. gets passed the specified tag value of which to deploy 
+#provisioning resources to 
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+    buildid:
+        Type: String
+
+    specifiedtagvalue:
+        Type: String
+
+    personalemail:
+        Type: String
+Resources:
+    #Creates lambda function to trigger upon instance_launch event with target that launches instance monitoring resources
+    Resourcediscoveryfunction:
+        Type: AWS::Lambda::Function
+        Properties:
+            FunctionName: 'ec2discendpoint'
+            Handler: Resource_Discovery_Endpoint.lambda_handler
+            Role: !GetAtt Provisioninglaunchrole.Arn
+            Runtime: python3.7
+            Tags: 
+                -   Key: 'invokation'
+                    Value: 'event'
+                -   Key: 'buildid'
+                    Value: !Ref buildid              
+            Code:
+                S3Bucket: !Join
+                    -   ''
+                    -   - 'vmprovisionsresources-'
+                        - !Ref buildid
+                S3Key: 'Resources/Resource_Discovery_Endpoint.zip'
+            Environment:
+                Variables:
+                    tag_value: !Ref specifiedtagvalue
+                    cfrole: !GetAtt Cloudformationec2provisionsrole.Arn
+                    buildid: !Ref buildid
+    #Event for ec2 launch discovery config event with a lambda function target 
+    Configdiscoveryevent:
+        Type: AWS::Events::Rule
+        Properties:
+            Name: 'Configec2discoveryevent0'
+            RoleArn: !GetAtt Configeventrole.Arn
+            EventPattern:
+                Name: 'Configec2discoveryevent'
+                EventPattern:
+                    source: 
+                        - "aws.config"
+                    detail-type: 
+                        - "Config Configuration Item Change"
+                    detail: 
+                        messageType: 
+                            - "ConfigurationItemChangeNotification"
+                        configurationItem: 
+                            resourceType: 
+                                - "AWS::EC2::Instance"
+                            configurationItemStatus: 
+                                - "ResourceDiscovered"
+            Targets:
+                -   
+                    Arn: !GetAtt Resourcediscoveryfunction.Arn
+                    Id: 'lambdafunctionforec2provisions'
+                    InputTransformer:
+                        InputPathsMap:
+                            "instanceid": "$.detail.configurationItem.resourceId"
+                        InputTemplate: |
+                            {"instance_id": <instanceid>}
+   
+    #Main resources bucket        
+    Resourcebucket:
+        Type: AWS::S3::Bucket
+        Properties:
+            VersioningConfiguration:
+                Status: Enabled
+        BucketName: !Join
+                - ''
+                -   - 'vmprovisionsresources-'
+                    - !Ref buildid
+    
+    #topic to handle usage notifs and be subscribed to by provision functions
+    Snstopic:
+        Type: AWS::SNS::Topic
+        Properties:
+            TopicName: 'VmProvisions'
+    Subscribeemail:
+        Type: AWS::SNS::Subscription
+        Properties: 
+            Protocol: email-json
+            TopicArn: !Ref Snstopic
+            Endpoint: !Ref personalemail
+    #to be used by ec2 provisions function
+    Provisioninglaunchrole:
+        Type: AWS::IAM::Role
+        Properties:    
+            RoleName: 'provisionslaunchrole'
+            AssumeRolePolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                    -   Effect: Allow
+                        Principal:
+                            Service: 
+                                - 'lambda.amazonaws.com'
+                        Action: 
+                            - 'sts:AssumeRole'
+            Policies:
+                -   PolicyName: root                    
+                    PolicyDocument:
+                        Version: "2012-10-17"
+                        Statement: 
+                            -   Effect: Allow
+                                Action: 'cloudformation:CreateStack'
+                                Resource: "*"                    
+                            -   Effect: Allow
+                                Action: 'cloudformation:CreateStack'
+                                Resource: "*"
+                            -   Effect: Allow
+                                Action: 'ec2:DescribeInstances'
+                                Resource: "*"
+                            -   Effect: Allow
+                                Action:
+                                    -   'logs:CreateLogGroup'
+                                    -   'logs:CreateLogStream'
+                                    -   'logs:PutLogEvents'
+                                Resource: "*"
+                            -   Effect: Allow
+                                Action: 'sns:publish'
+                                Resource: !GetAtt Snstopic.Arn
+    #to be used by event rule&target
+    Configeventrole:
+        Type: AWS::IAM::Role
+        Properties:    
+            RoleName: 'configeventrole'
+            AssumeRolePolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                    -   Effect: Allow
+                        Principal:
+                            Service: 
+                                - 'events.amazonaws.com'
+                        Action: 
+                            - 'sts:AssumeRole'
+            Policies:
+                -   PolicyName: root                    
+                    PolicyDocument:
+                        Version: "2012-10-17"
+                        Statement: 
+                            -   Effect: Allow
+                                Action: 'config:ListDiscoveredResources'
+                                Resource: '*'                        
+                            -   Effect: Allow
+                                Action: 'lambda:InvokeFunction'
+                                Resource: !GetAtt Resourcediscoveryfunction.Arn
+    #to be used for monitoring stack creation
+    Cloudformationec2provisionsrole:
+        Type: AWS::IAM::Role
+        Properties:    
+            RoleName: 'stackec2provsrole'
+            AssumeRolePolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                    -   Effect: Allow
+                        Principal:
+                            Service: 
+                                - 'cloudformation.amazonaws.com'
+                        Action: 
+                            - 'sts:AssumeRole'
+            Policies:
+                -   PolicyName: root                    
+                    PolicyDocument:
+                        Version: "2012-10-17"
+                        Statement: 
+                            -   Effect: Allow
+                                Action: 
+                                    - 'cloudwatch:EnableAlarmActions'
+                                    - 'cloudwatch:PutMetricAlarm'
+                                    - 'cloudwatch:DeleteAlarms'
+                                Resource: 'arn:aws:cloudwatch:*:*:alarm:*'                 
+                            -   Effect: Allow
+                                Action: 's3:GetObject'
+                                Resource: 'arn:aws:s3:::*/*''
+                            -   Effect: Allow
+                                Action: 
+                                    - 'lambda:CreateFunction'
+                                    - 'lambda:DeleteFunction'
+                                Resource: 'arn:aws:lambda:*:*:function:*''
+                            -   Effect: Allow
+                                Action: 
+                                    - 'events:PutEvents'
+                                    - 'events:DeleteRule'
+                                    - 'events:PutTargets'
+                                    - 'events:PutRule'
+                                    - 'events:DeleteEndpoint'
+                                Resource: 
+                                    - 'arn:aws:events:*:*:rule/*/*'
+                                    - 'arn:aws:events:*:*:endpoint/*'
+                            -   Effect: Allow
+                                Action: 
+                                    -   'iam:CreateRole'
+                                    -   'iam:DeleteRole'
+                                Resource: 'arn:aws:iam::**/*'
+
+
+
+
+
+#topic arn for other functions to use, 
+#ARNs for assignment function to add target to rule upon new function discovered
+Outputs:
+    topicarn:
+        Value: !Ref Snstopic
+        Export:
+            Name: !Sub '${AWS::StackName}-topicarn'
+    existingfunctionarn:
+        Value: !GetAtt Resourcediscoveryfunction.Arn
+        Export:
+            Name: !Sub '${AWS::StackName}-existingfunction'                                       
+    rolearn:
+        Value: !GetAtt Configeventrole.Arn
+        Export:
+            Name: !Sub '${AWS::StackName}-rolearn'
+       
+    
+    

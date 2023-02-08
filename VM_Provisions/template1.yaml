@@ -1,0 +1,232 @@
+####Launches at point of intitial deploy. Puts into place event for lambda function creation discovery
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+    buildid:
+        Type: String
+    specifiedtagvalue:
+        Type: String
+Resources:
+#event upon create_function discovery
+    CloudTrailLambdaEvent:        
+        Type: AWS::Events::Rule
+        Properties:
+            EventPattern: !Sub
+                source:
+                    - aws.lambda
+                detail-type:
+                    - AWS API Call via CloudTrail
+                detail:
+                    eventSource:
+                        - lambda.amazonaws.com
+                    eventName:
+                        - CreateFunction20150331
+                    requestParameters:
+                        tags:
+                            buildid:
+                                - "${buildid}"
+                buildid: !Ref buildid
+            Name: !Join
+                - ''
+                -   - 'CWLogsFunction'
+                    - !Ref buildid   
+            RoleArn: !Ref Cloudtraileventrole.Arn
+            Targets: 
+                -    
+                    Arn: !GetAtt AssignmentFunction.Arn
+                    RoleArn: !GetAtt Invokelambdarole.Arn
+                    Id: 'lambdaconfInvokelambda'
+                    InputTransformer:
+                        InputPathsMap:
+                                "tags": "$.detail.requestParameters.tags.invokation"
+                                "newfunctionarn": "$.detail.responseElements.functionArn"
+                        InputTemplate: |
+                            {
+                                "tag": <tags>,
+                                "new_function_arn": <newfunctionarn>
+                            }    
+        
+#This function is outside of any explicit monitoring, this handles the auto-assignment of other functions
+    AssignmentFunction:
+        Type: AWS::Lambda::Function
+        Properties: 
+            FunctionName: !Join
+                - ''
+                -   - 'AssignmentLambda'
+                    - !Ref buildid
+            Handler: FunctionDesignation.lambda_handler
+            Runtime: python3.7
+            Role: !GetAtt FunctionDesignationlambdaRole.Arn
+            Environment:
+                Variables:
+                    cfrole: !GetAtt Stacklambdadesignaterole.Arn 
+                    topicarn: 
+                        Fn::ImportValue: !Sub '${StackName}-topicarn'
+                    buildid: !Ref buildid
+            Code:
+                S3Bucket: !Join
+                    - ''
+                    -   - 'vmprovisionsresources-'
+                        - !Ref buildid
+                S3Key: !Join
+                    - ''
+                    -   - 'Resources/FunctionDesignation.py'
+                        - !Ref buildid  
+        DependsOn: CloudTrailLambdaEvent    
+    #aggregates and stores execution logs
+    Lambdalogsfunction:
+        Type: AWS::Lambda::Function
+        Properties: 
+            FunctionName: !Join
+                - ''
+                -   - 'CWLogsFunction'
+                    - !Ref buildid
+            Runtime: python3.7
+            Handler: SnsEndpoint_LogsUploader.lambda_handler
+            Role: !GetAtt Lambdas3cwlogsrole.Arn
+            Code:
+                S3Bucket: !Join
+                - ''
+                -   - 'vmprovisionsresources-'
+                    - !Ref buildid
+                S3Key: !Join
+                    - ''
+                    -   - 'Resources/logs3uploadfunctioncode.py'
+                        - !Ref buildid    
+            Tags: 
+                -   Key: 'invokation'
+                    Value: 'sns'
+                -   Key: 'buildid'
+                    value: buildid
+        DependsOn: AssignmentFunction
+###Create necessary permissions for created services to assume
+    Cloudtraileventrole:
+        Type: AWS::IAM::Role
+        Properties: 
+            RoleName: 'cloudtrailrole'
+            AssumeRolePolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                    -   Effect: Allow
+                        Principal:
+                            Service: events.amazonaws.com
+                        Action: 'sts:AssumeRole'
+            Policies:
+                -   PolicyName: root
+                    PolicyDocument:
+                        Version: "2012-10-17"
+                        Statement:
+                            -   Effect: Allow
+                                Action: 'cloudtrail:LookupEvents'
+                                Resource: '*'
+                -   PolicyName: root
+                    PolicyDocument:
+                        Version: "2012-10-17"
+                        Statement: 
+                            -   Effect: Allow
+                                Action: 'lambda:InvokeFunction'
+                                Resource: !GetAtt AssignmentFunction.Arn
+    Lambdas3cwlogsrole:
+        Type: AWS::IAM::Role
+        Properties:    
+            RoleName: 'Lambdas3cwlogsrole'
+            AssumeRolePolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                -   Effect: Allow
+                    Principal:
+                        Service: lambda.amazonaws.com
+                    Action: 'sts:AssumeRole'
+            Policies:
+                -   PolicyName: root
+                    PolicyDocument:
+                        Version: "2012-10-17"
+                        Statement:
+                            -   Effect: Allow
+                                Action:
+                                    -   'logs:CreateLogGroup'
+                                    -   'logs:CreateLogStream'
+                                    -   'logs:PutLogEvents'
+                            -   Effect: Allow
+                                Action: "s3:PutObject"
+                                Resource: '*'                          
+                            -   Effect: Allow
+                                Action:
+                                    -   "logs:DescribeLogStreams"
+                                    -   "logs:GetLogEvents"
+                                Resource: '*'  
+                            -   Effect: Allow
+                                Action: 'sns:publish'
+                                Resource: 
+                                    Fn::ImportValue: !Sub '${AWS::Main_Event_Stack${buildid}}-topicarn'
+    
+    FunctionDesignationlambdaRole:
+        Type: AWS::IAM::Role
+        Properties:    
+            RoleName: 'designationfunctionrole'
+            AssumeRolePolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                    -   Effect: Allow
+                    Principal:
+                        Service: lambda.amazonaws.com
+                Action: 'sts:AssumeRole'
+            Policies:
+                -   PolicyName: root
+                    PolicyDocument:
+                        Version: "2012-10-17"
+                        Statement:
+                            -   Effect: Allow
+                                Action:
+                                    -   'logs:CreateLogGroup'
+                                    -   'logs:CreateLogStream'
+                                    -   'logs:PutLogEvents'
+                                Resource: '*'
+                            -   Effect: Allow
+                                Action: "cloudformation:CreateStack"
+                                Resource: '*'   
+                            -   Effect: Allow
+                                Action: 'sns:publish'
+                                Resource: 
+                                    Fn::ImportValue: !Sub '${AWS::Main_Event_Stack${buildid}}-topicarn'
+    
+    Stacklambdadesignaterole:
+        Type: AWS::IAM::Role
+        Properties:    
+            RoleName: 'designationfunctionrole'
+            AssumeRolePolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                    -   Effect: Allow
+                    Principal:
+                        Service: cloudformation.amazonaws.com
+                Action: 'sts:AssumeRole'
+            Policies:
+                -   PolicyName: root
+                    PolicyDocument:
+                        Version: "2012-10-17"
+                        Statement:
+                           
+                            -   Effect: Allow
+                                Action: 
+                                    -   'eventbridge:PutRule'
+                                    -   'eventbridge:DeleteRule'
+                                Resource: 'arn:aws:events:*:${accountid}:rule/*'
+                            -   Effect: Allow
+                                Action: "sns:Subscribe"
+                                Resource: 'arn:aws:sns:*:${accountid}:*' 
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    

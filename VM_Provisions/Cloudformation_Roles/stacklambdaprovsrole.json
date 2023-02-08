@@ -1,0 +1,35 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "lambda:CreateFunction",
+                "lambda:DeleteFunction"
+            ],
+            "Resource": "arn:aws:lambda:*:${accountid}:function:*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "events:DeleteRule",
+                "events:PutTargets",
+                "events:PutRule"
+            ],
+            "Resource": "arn:aws:events:*:${accountid}:rule/*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:Getobject"
+            ],
+            "Resource": "arn:aws:s3:::*/*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "iam:CreateRole",
+                "iam:DeleteRole"
+            ],
+            "Resource": "arn:aws:iam::${accountid}*/*" 
+        }

@@ -1,0 +1,48 @@
+CLI COMMANDS FOR INITIAL CLOUDFORMATION STACKS
+
+
+1a.
+aws iam create-role --role-name stackec2provsrole --assume-role-policy-document {
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "",
+            "Effect": "Allow",
+            "Principal": {
+                "Service": "cloudformation.amazonaws.com"
+            },
+            "Action": "sts:AssumeRole"
+        }
+    ]
+}
+
+2a.
+aws iam create-role 
+--role-name stackeventforec2role 
+--assume-role-policy-document {
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "",
+            "Effect": "Allow",
+            "Principal": {
+                "Service": "cloudformation.amazonaws.com"
+            },
+            "Action": "sts:AssumeRole"
+        }
+    ]
+}
+
+
+
+1b.
+aws iam put-role-policy 
+--role-name stackec2provsrole 
+--policy-name ExamplePolicy 
+--policy-document 
+
+2b. add policy
+aws iam put-role-policy 
+--role-name stackec2provsrole 
+--policy-name ExamplePolicy 
+--policy-document 

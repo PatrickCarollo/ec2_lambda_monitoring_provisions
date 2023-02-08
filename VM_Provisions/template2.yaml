@@ -1,0 +1,62 @@
+#Deployed at point of 'create_function2015' discovery event function, recieves as input: a  
+#new function arn that has been deployed for use of logs aggregator as SNS endpoint,
+# or adds it as an event target for use as a main ec2 event provisions function
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+    newfunctionarn:
+        Type: String
+    topicarn:
+        Type: String   
+    invokationtag:
+        Type: String
+    buildid:
+        Type: String
+Conditions:
+    AddSnsFunction: !Equals
+        - !Ref invokationtag
+        - 'sns'
+    AddEventFunction: !Equals
+        - !Ref invokationtag
+        - 'event'
+Resources:
+    #adds new function to receive sns messages generated from event functions
+    SnsSubscribeNewFunction:
+        Condition: AddSnsFunction
+        Type: AWS::SNS::Subscription
+        Properties: 
+            Endpoint: !Ref newfunctionarn
+            Protocol: lambda
+            TopicArn: !Ref topicarn
+    #updates rule to include new lambda arn as target
+    Configdiscoveryevent:
+        Condition: AddEventFunction
+        Type: 'AWS::Events::Rule'
+        Properties:
+            Name: 'Configec2discoveryevent'
+            RoleArn: 
+                Fn::ImportValue: !Sub '${Main-Event-Stack}-rolearn'
+            EventPattern:                                                        
+                Name: 
+                    - 'Configec2discoveryevent'
+                EventPattern:
+                    source: 
+                        - "aws.config"
+                    detail-type: 
+                        - "Config Configuration Item Change"
+                    detail: 
+                        messageType: 
+                            - "ConfigurationItemChangeNotification"
+                        configurationItem: 
+                            resourceType: 
+                                - "AWS::EC2::Instance"
+                            configurationItemStatus: 
+                                - "ResourceDiscovered"
+            Targets:
+                -   Arn: !Ref newfunctionarn
+                    Id: 'lambdafunctionforec2provisions1'
+                    InputTransformer:
+                        InputPathsMap:
+                            "instanceid": "$.detail.configurationItem.resourceId"
+                        InputTemplate: |
+                            {"instance_id": <instanceid>}

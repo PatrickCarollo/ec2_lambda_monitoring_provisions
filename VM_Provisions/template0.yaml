@@ -1,0 +1,129 @@
+####Launches at point of Ec2 instance discovery tag match, deploys ec2 monitoring infrastructure
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+    volumeid:
+        Type: String    
+    instanceid:
+        Type: String
+    buildid:
+        Type: String
+Resources:
+    UsageMonitorAlarm:
+        Type: AWS::CloudWatch::Alarm
+        Properties:
+            AlarmName: !Join
+                - ''
+                -   - 'InstanceMonitoring'
+                    - !Ref buildid
+            Namespace: AWS/EC2
+            Dimensions: !Ref instanceid
+            MetricName: CPUUtilization
+            Threshold: 70
+            Statistic:  Average
+            ComparisonOperator: GreaterThanOrEqualToThreshold
+            Period: 180
+            AlarmActions: 
+                - !Ref topicarn
+                - !Sub 'arn:aws:automate:${AWS::Region}:ec2:reboot'
+    ScheduledSnapshotFunction:
+        Type: AWS::Lambda::Function
+        Properties:
+            Role: !GetAtt Ebsfunctionrole.Arn
+            Runtime: python3.8
+            Environment:
+                Variables:
+                    instanceid: !Ref instanceid
+                    volumeid: !Ref volumeid
+                    topicarn: !ImportValue 
+                        !Sub 
+                        - 'Main-Event-Stack#{buildid}-topicarn'
+                        - buildid: !Ref buildid
+                    buildid: !Ref buildid
+            Code:
+                S3Bucket: !Join
+                    - ''
+                    -   - 'VMProvisionsResource-'
+                        - !Ref buildid
+                S3Key: 'Resources/Ebs_Scheduled.py'
+            Tags:
+                -   Key: 'invokation'
+                    Value: 'event'  
+                -   Key: 'buildid'
+                    Value: buildid
+    ScheduledSnapshotEvent:
+        Type: AWS::Events::Rule
+        Properties:
+            RoleArn: !GetAtt Ebseventrole.Arn
+            Name: !Join
+                - ''
+                -   - 'ScheduledSnapshots'
+                    - !Ref buildid 
+            ScheduleExpresion: rate(3 days)
+            Targets:  
+                Id: 'snapshotfuntiontarget'
+                Arn: !GetAtt ScheduledSnapshotFunction.Arn
+    Ebsfunctionrole:
+        Type: AWS::Iam::Role
+        Properties:
+            RoleName: !Join
+                - ''
+                -   - 'Scheduledsnapshotsfuncrole'
+                    - !Ref buildid
+            AssumeRolePolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                    -   Effect: Allow
+                        Principal:
+                            Service: lambda.amazonaws.com
+                        Action: 'sts:AssumeRole'
+            Policies:
+                -   PolicyName: root                    
+                    PolicyDocument:
+                        Version: "2012-10-17"
+                        Statement: 
+                            -   Effect: Allow
+                                Action:                 
+                                    - 'logs:CreateLogGroup'
+                                    - 'logs:CreateLogStream'
+                                    - 'logs:PutLogEvents'
+                                Resource: '*'           
+                            -   Effect: Allow
+                                Action: 
+                                    - 'ebs:CompleteSnapshot'
+                                    - 'ebs:StartSnapshot'
+                                Resource: '*'
+                            -   Effect: Allow
+                                Action: 'sns:publish'
+                                Resource: !ImportValue 
+                                    !Sub 
+                                    - 'Main-Event-Stack#{buildid}-topicarn'
+                                    - buildid: !Ref buildid
+                            -   Effect: Allow
+                                Action: 
+                                    - 'ec2:StartInstance'
+                                    - 'ec2:StopInstance'
+                                Resource: !Ref instanceid                          
+    Ebseventrole:
+        Type: AWS::Iam::Role
+        Properties:
+            RoleName: !Join
+                - ''
+                -   - 'Eventroleebssnap'
+                    - !Ref buildid
+            AssumeRolePolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                    -   Effect: Allow
+                        Principal:
+                            Service: events.amazonaws.com
+                        Action: 'sts:AssumeRole'
+            Version: "2012-10-17"
+            Policies:
+                -   PolicyName: root                    
+                    PolicyDocument:
+                        Version: "2012-10-17"
+                        Statement:
+                            -   Effect: Allow
+                                Action:
+                                    - 'lambda:InvokeFunction'
+                                Resource: !GetAtt ScheduledSnapshotEvent.Arn
