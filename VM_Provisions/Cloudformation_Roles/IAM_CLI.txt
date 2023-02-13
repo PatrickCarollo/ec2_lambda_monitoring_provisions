@@ -1,5 +1,6 @@
-CLI COMMANDS FOR INITIAL CLOUDFORMATION STACKS
+CLI COMMANDS FOR INITIAL CLOUDFORMATION STACKS' IAM Roles
 
+create role
 
 1a.
 aws iam create-role --role-name stackec2provsrole --assume-role-policy-document {
@@ -35,14 +36,16 @@ aws iam create-role
 
 
 
+add policy
+
 1b.
 aws iam put-role-policy 
 --role-name stackec2provsrole 
---policy-name ExamplePolicy 
+--policy-name stackec2provs 
 --policy-document 
 
-2b. add policy
+2b. 
 aws iam put-role-policy 
---role-name stackec2provsrole 
---policy-name ExamplePolicy 
+--role-name stacklambdaprovsrole 
+--policy-name stacklambdaprovspolicy
 --policy-document 

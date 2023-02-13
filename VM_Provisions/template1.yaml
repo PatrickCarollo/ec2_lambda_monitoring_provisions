@@ -23,7 +23,7 @@ Resources:
                     requestParameters:
                         tags:
                             buildid:
-                                - "${buildid}"
+                                - !Sub "${buildid}"
                 buildid: !Ref buildid
             Name: !Join
                 - ''
@@ -60,17 +60,12 @@ Resources:
                 Variables:
                     cfrole: !GetAtt Stacklambdadesignaterole.Arn 
                     topicarn: 
-                        Fn::ImportValue: !Sub '${StackName}-topicarn'
+                        Fn::ImportValue: !Sub 'Main_Event_Stack${buildid}-topicarn'
                     buildid: !Ref buildid
             Code:
-                S3Bucket: !Join
-                    - ''
-                    -   - 'vmprovisionsresources-'
-                        - !Ref buildid
-                S3Key: !Join
-                    - ''
-                    -   - 'Resources/FunctionDesignation.py'
-                        - !Ref buildid  
+                S3Bucket: !Sub 'vmprovisionsresources-${buildid}'
+                S3Key: 'Resources/FunctionDesignation.py'
+
         DependsOn: CloudTrailLambdaEvent    
     #aggregates and stores execution logs
     Lambdalogsfunction:
@@ -84,14 +79,9 @@ Resources:
             Handler: SnsEndpoint_LogsUploader.lambda_handler
             Role: !GetAtt Lambdas3cwlogsrole.Arn
             Code:
-                S3Bucket: !Join
-                - ''
-                -   - 'vmprovisionsresources-'
-                    - !Ref buildid
-                S3Key: !Join
-                    - ''
-                    -   - 'Resources/logs3uploadfunctioncode.py'
-                        - !Ref buildid    
+                S3Bucket: !Sub 'vmprovisionsresources-${buildid}'
+                S3Key: 'Resources/logs3uploadfunctioncode.py'
+   
             Tags: 
                 -   Key: 'invokation'
                     Value: 'sns'
@@ -157,7 +147,7 @@ Resources:
                             -   Effect: Allow
                                 Action: 'sns:publish'
                                 Resource: 
-                                    Fn::ImportValue: !Sub '${AWS::Main_Event_Stack${buildid}}-topicarn'
+                                    Fn::ImportValue: !Sub 'Main_Event_Stack${buildid}-topicarn'
     
     FunctionDesignationlambdaRole:
         Type: AWS::IAM::Role
@@ -187,7 +177,7 @@ Resources:
                             -   Effect: Allow
                                 Action: 'sns:publish'
                                 Resource: 
-                                    Fn::ImportValue: !Sub '${AWS::Main_Event_Stack${buildid}}-topicarn'
+                                    Fn::ImportValue: !Sub 'Main_Event_Stack${buildid}-topicarn'
     
     Stacklambdadesignaterole:
         Type: AWS::IAM::Role
@@ -208,12 +198,11 @@ Resources:
                            
                             -   Effect: Allow
                                 Action: 
-                                    -   'eventbridge:PutRule'
-                                    -   'eventbridge:DeleteRule'
-                                Resource: 'arn:aws:events:*:${accountid}:rule/*'
+                                    -   'eventbridge:*'
+                                Resource: '*'
                             -   Effect: Allow
-                                Action: "sns:Subscribe"
-                                Resource: 'arn:aws:sns:*:${accountid}:*' 
+                                Action: "sns:*"
+                                Resource: '*' 
     
     
     

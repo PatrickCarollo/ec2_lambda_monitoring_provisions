@@ -72,10 +72,7 @@ Resources:
         Properties:
             VersioningConfiguration:
                 Status: Enabled
-        BucketName: !Join
-                - ''
-                -   - 'vmprovisionsresources-'
-                    - !Ref buildid
+        BucketName: !Sub 'vmprovisionsresources-${buildid}'
     
     #topic to handle usage notifs and be subscribed to by provision functions
     Snstopic:
@@ -171,33 +168,23 @@ Resources:
                         Statement: 
                             -   Effect: Allow
                                 Action: 
-                                    - 'cloudwatch:EnableAlarmActions'
-                                    - 'cloudwatch:PutMetricAlarm'
-                                    - 'cloudwatch:DeleteAlarms'
-                                Resource: 'arn:aws:cloudwatch:*:*:alarm:*'                 
+                                    - 'cloudwatch:*'
+                                Resource: '*'                 
                             -   Effect: Allow
                                 Action: 's3:GetObject'
-                                Resource: 'arn:aws:s3:::*/*''
+                                Resource: '*'
                             -   Effect: Allow
                                 Action: 
-                                    - 'lambda:CreateFunction'
-                                    - 'lambda:DeleteFunction'
-                                Resource: 'arn:aws:lambda:*:*:function:*''
+                                    - 'lambda:*'
+                                Resource: '*''
                             -   Effect: Allow
                                 Action: 
-                                    - 'events:PutEvents'
-                                    - 'events:DeleteRule'
-                                    - 'events:PutTargets'
-                                    - 'events:PutRule'
-                                    - 'events:DeleteEndpoint'
-                                Resource: 
-                                    - 'arn:aws:events:*:*:rule/*/*'
-                                    - 'arn:aws:events:*:*:endpoint/*'
+                                    - 'events:*'
+                                Resource: '*'
                             -   Effect: Allow
                                 Action: 
-                                    -   'iam:CreateRole'
-                                    -   'iam:DeleteRole'
-                                Resource: 'arn:aws:iam::**/*'
+                                    -   'iam:*'
+                                Resource: '*'
 
 
 

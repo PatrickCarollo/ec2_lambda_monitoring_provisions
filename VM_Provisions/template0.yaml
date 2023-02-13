@@ -18,7 +18,7 @@ Resources:
             Namespace: AWS/EC2
             Dimensions: !Ref instanceid
             MetricName: CPUUtilization
-            Threshold: 70
+            Threshold: 65
             Statistic:  Average
             ComparisonOperator: GreaterThanOrEqualToThreshold
             Period: 180
@@ -36,14 +36,11 @@ Resources:
                     volumeid: !Ref volumeid
                     topicarn: !ImportValue 
                         !Sub 
-                        - 'Main-Event-Stack#{buildid}-topicarn'
+                        - 'Main-Event-Stack${buildid}-topicarn'
                         - buildid: !Ref buildid
                     buildid: !Ref buildid
             Code:
-                S3Bucket: !Join
-                    - ''
-                    -   - 'VMProvisionsResource-'
-                        - !Ref buildid
+                S3Bucket: !Sub 'vmprovisionsresources-${buildid}'
                 S3Key: 'Resources/Ebs_Scheduled.py'
             Tags:
                 -   Key: 'invokation'
@@ -58,7 +55,7 @@ Resources:
                 - ''
                 -   - 'ScheduledSnapshots'
                     - !Ref buildid 
-            ScheduleExpresion: rate(3 days)
+            ScheduleExpresion: rate(1 day)
             Targets:  
                 Id: 'snapshotfuntiontarget'
                 Arn: !GetAtt ScheduledSnapshotFunction.Arn
@@ -96,7 +93,7 @@ Resources:
                                 Action: 'sns:publish'
                                 Resource: !ImportValue 
                                     !Sub 
-                                    - 'Main-Event-Stack#{buildid}-topicarn'
+                                    - 'Main-Event-Stack${buildid}-topicarn'
                                     - buildid: !Ref buildid
                             -   Effect: Allow
                                 Action: 

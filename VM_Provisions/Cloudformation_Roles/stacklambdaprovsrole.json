@@ -3,33 +3,21 @@
     "Statement": [
         {
             "Effect": "Allow",
-            "Action": [
-                "lambda:CreateFunction",
-                "lambda:DeleteFunction"
-            ],
-            "Resource": "arn:aws:lambda:*:${accountid}:function:*"
+            "Action": "lambda:*",
+            "Resource": "*"
         },
         {
             "Effect": "Allow",
-            "Action": [
-                "events:DeleteRule",
-                "events:PutTargets",
-                "events:PutRule"
-            ],
-            "Resource": "arn:aws:events:*:${accountid}:rule/*"
+            "Action": "events:*",
+            "Resource": "*"
         },
         {
             "Effect": "Allow",
-            "Action": [
-                "s3:Getobject"
-            ],
-            "Resource": "arn:aws:s3:::*/*"
+            "Action": "s3:*"
+            "Resource": "*"
         },
         {
             "Effect": "Allow",
-            "Action": [
-                "iam:CreateRole",
-                "iam:DeleteRole"
-            ],
-            "Resource": "arn:aws:iam::${accountid}*/*" 
+            "Action": "iam:*",
+            "Resource": "*" 
         }

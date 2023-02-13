@@ -13,7 +13,7 @@ def lambda_handler(event):
     env_variables = os.environ
     response = cfclient.create_stack(
         StackName = 'FunctionAssisgnment',
-        Capabilities = ['CAPABILITY_NAMED_IAM']
+        Capabilities = ['CAPABILITY_NAMED_IAM'],
         RoleArn = env_variables['cfrole'],
         TemplateURL = 'https://' + 'VMProvisionsResources-'+ env_variables['buildid']+'\
         .s3.amazonaws.com/Resources/template2',
