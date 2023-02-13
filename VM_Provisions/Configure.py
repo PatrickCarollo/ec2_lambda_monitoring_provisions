@@ -44,6 +44,7 @@ def Get_CF_Permissions():
             )
             if 'Arn' in response['Role']:
                 role_arns[x] = response['Role']['Arn'].strip()
+                return role_arns
             else:
                 return 0
         except ClientError as e:
