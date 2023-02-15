@@ -34,7 +34,6 @@ def Get_CF_Permissions():
         role_arns = {}
         role_names = [
             'stacklambdaprovsrole',
-            'stacklambdadesignaterole',
             'stackeventforec2role'
         ]
     for x in role_names:
