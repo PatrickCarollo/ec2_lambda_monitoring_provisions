@@ -28,13 +28,12 @@ def Set_Variables():
 
 
 #Gets iam roleARNS for create_stack to assume, these are passed to necessary lambda functions
-
 def Get_CF_Permissions():
     if confirm == 'y': 
         role_arns = {}
         role_names = [
             'stacklambdaprovsrole',
-            'stackeventforec2role'
+            'stackeventec2provsrole'
         ]
     for x in role_names:
         try:
@@ -113,7 +112,7 @@ def Create_Bucket_Resources(stack_status):
                 zipped_name = obj_key[:integ] + '.zip'
                 object_body = io.BytesIO()
                 with ZipFile(object_body,'w',ZIP_DEFLATED) as obj:
-                    obj.write(x, arcname = 'testfile.py')
+                    obj.write(x, arcname = obj_key)
                 object_body.seek(0)
                 object_key = zipped_name
             else:

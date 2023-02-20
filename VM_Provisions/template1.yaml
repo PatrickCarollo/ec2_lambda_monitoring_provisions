@@ -37,7 +37,7 @@ Resources:
                     Id: 'lambdaconfInvokelambda'
                     InputTransformer:
                         InputPathsMap:
-                                "tags": "$.detail.requestParameters.tags.invokation"
+                                "tags": "$.detail.requestParameters.tags.invocation"
                                 "newfunctionarn": "$.detail.responseElements.functionArn"
                         InputTemplate: |
                             {
@@ -83,7 +83,7 @@ Resources:
                 S3Key: 'Resources/logs3uploadfunctioncode.py'
    
             Tags: 
-                -   Key: 'invokation'
+                -   Key: 'invocation'
                     Value: 'sns'
                 -   Key: 'buildid'
                     value: buildid

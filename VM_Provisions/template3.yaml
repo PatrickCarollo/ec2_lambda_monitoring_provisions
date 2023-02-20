@@ -20,7 +20,7 @@ Resources:
             Role: !GetAtt Provisioninglaunchrole.Arn
             Runtime: python3.7
             Tags: 
-                -   Key: 'invokation'
+                -   Key: 'invocation'
                     Value: 'event'
                 -   Key: 'buildid'
                     Value: !Ref buildid              

@@ -1,4 +1,4 @@
-####Launches at point of Ec2 instance discovery tag match, deploys ec2 monitoring infrastructure
+####Launches at point of Ec2 instance discovery tag match by Lambda function, deploys ec2 monitoring infrastructure
 AWSTemplateFormatVersion: 2010-09-09
 Parameters:
     volumeid:
@@ -43,7 +43,7 @@ Resources:
                 S3Bucket: !Sub 'vmprovisionsresources-${buildid}'
                 S3Key: 'Resources/Ebs_Scheduled.py'
             Tags:
-                -   Key: 'invokation'
+                -   Key: 'invocation'
                     Value: 'event'  
                 -   Key: 'buildid'
                     Value: buildid

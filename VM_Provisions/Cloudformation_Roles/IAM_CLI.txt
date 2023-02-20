@@ -1,9 +1,12 @@
 CLI COMMANDS FOR INITIAL CLOUDFORMATION STACKS' IAM Roles
 
-create role
+
+
+
+Create roles:
 
 1a.
-aws iam create-role --role-name stackec2provsrole --assume-role-policy-document {
+aws iam create-role --role-name stackeventec2provsrole --assume-role-policy-document '{
     "Version": "2012-10-17",
     "Statement": [
         {
@@ -15,12 +18,10 @@ aws iam create-role --role-name stackec2provsrole --assume-role-policy-document 
             "Action": "sts:AssumeRole"
         }
     ]
-}
+}'
 
 2a.
-aws iam create-role 
---role-name stackeventforec2role 
---assume-role-policy-document {
+aws iam create-role --role-name stacklambdaprovsrole --assume-role-policy-document '{
     "Version": "2012-10-17",
     "Statement": [
         {
@@ -32,20 +33,67 @@ aws iam create-role
             "Action": "sts:AssumeRole"
         }
     ]
-}
+}'
 
 
 
-add policy
+Add policies:
 
 1b.
-aws iam put-role-policy 
---role-name stackec2provsrole 
---policy-name stackec2provs 
---policy-document 
+aws iam put-role-policy --role-name stackeventec2provsrole --policy-name stackeventec2provspolicy --policy-document '{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": "lambda:*",
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "events:*",
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "sns:*",
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "s3:*",
+            "Resource": "*"
+        },
+        {    "Effect": "Allow",
+            "Action": "iam:*",
+            "Resource": "*"
+        }
+    ]
+}'
+
 
 2b. 
-aws iam put-role-policy 
---role-name stacklambdaprovsrole 
---policy-name stacklambdaprovspolicy
---policy-document 
+aws iam put-role-policy --role-name stacklambdaprovsrole --policy-name stacklambdaprovspolicy --policy-document '{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": "lambda:*",
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "events:*",
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "s3:*"
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "iam:*",
+            "Resource": "*" 
+        }'
+    ]
+}'

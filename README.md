@@ -20,10 +20,11 @@ automated responses based on the received execution details.
 
 Prerequisites & run instructions:
 
-1. Create IA roles for Cloudformation stack creation using CLI commands provided in repository.
-Run "Instance_Provisioning-py" with a "deploy" input command, and follow input prompts
+1. Create IAM roles for Cloudformation stack creation using CLI commands provided in repository.
 
-2. Run Test_Resources_Launch.py and view if resources were correctly configured with monitoring provisions
+2. Run "Instance_Provisioning-py" with a "deploy" input command, and follow input prompts
+
+3. Run Test_Resources_Launch.py and view if resources were correctly configured with monitoring provisions
 
 #Provided email should recieve info data upon any success/fail action once deployed.
 
