@@ -4,7 +4,7 @@ Set of scripts that deploy automated compute service provisioning based on speci
 
 (2/12/23 Currently in proof of concept state only. Will be executable on any AWS account soon.)
 OUTLINE:
-To be deployed in AWS VPC for scalable provisioning and monitoring that monitors and logs Ec2 and Lambda
+To be deployed in AWS VPC for scalable provisioning that monitors and logs Ec2 and Lambda
 in the context of this infrastructure.
 It does this by first creating an an AWS Config EventBridge Ec2 discovery rule based on tag values
 with a Lambda function as a target. This target function deploys
