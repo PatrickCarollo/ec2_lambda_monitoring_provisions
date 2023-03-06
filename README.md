@@ -2,7 +2,7 @@
 Set of scripts that deploy automated compute service provisioning based on specific event parameters.
 
 
-(2/12/23 Currently in proof of concept state only. Will be runable on any AWS account soon.)
+(2/12/23 Currently in proof of concept state only. Will be executable on any AWS account soon.)
 OUTLINE:
 To be deployed in AWS VPC for scalable provisioning and monitoring that monitors and logs Ec2 and Lambda
 in the context of this infrastructure.
