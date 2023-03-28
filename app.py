@@ -32,7 +32,7 @@ def lambda_handler(event, context):
                 'ObjectLocation': x,
                 'DatabaseUpdated': json.dumps(y)
             }
-        else:
+        else: 
             response_data = 'Error.. database write item fail'
     else:
         response_data = 'Error.. put_object for image fail'
