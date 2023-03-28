@@ -33,7 +33,7 @@ def lambda_handler(event, context):
             time.sleep(10)
             Stop_Instance()    
     except ClientError as e:
-        print("Client error: %s" % e)
+        print('Client error: %s' % e)
         
 
         
@@ -45,7 +45,7 @@ def Stop_Instance():
         status = response['StoppingInstances'][0]['CurrentState']['Name']
         return status
     except ClientError as e:
-        print("Client error: %s" % e)
+        print('Client error: %s' % e)
 
 
 
@@ -60,7 +60,7 @@ def Start_Instance(snapshot_status):
         status = response['StartingInstances'][0]['CurrentState']['Name']
         Sns_Notification(snapshot_status, status)
     except ClientError as e:
-        print("Client error: %s" % e)
+        print('Client error: %s' % e)
 
 
 
@@ -80,6 +80,6 @@ def Sns_Notification(snapshot_status, serverstart_status):
             Message = json.dumps(message_data)        
         )
     except ClientError as e:
-        print("Client error: %s" % e)
+        print('Client error: %s' % e)
 
 

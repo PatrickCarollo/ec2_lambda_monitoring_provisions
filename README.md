@@ -8,7 +8,7 @@ To be deployed in AWS VPC for scalable provisioning that monitors and logs Ec2 a
 in the context of this infrastructure.
 It does this by first creating an an AWS Config EventBridge Ec2 discovery rule based on tag values
 with a Lambda function as a target. This target function deploys
-10 a stack of resources consisting of a Ec2 CPU util monitor and a schedule-based EBS lambda snapshot function. 
+a stack of resources consisting of a Ec2 CPU util monitor and a schedule-based EBS lambda snapshot function. 
 Both send their execution results to an Sns topic with a user-inputed Email subscribed. Along with these
 resources, in the initial deployment, a CloudTrail event meant for scalablity to detect any 
 new functions created for this project is also deployed.
@@ -36,10 +36,10 @@ Prerequisites & run instructions:
 
 Notable limitations:
 
-In deployed Cloudwatch Event, Ec2 instance restarts upon meeting utilization threshold:
+In deployed Cloudwatch Event, Ec2 instance restarts upon meeting utilization threshold.
     This action is there for ease of testing and has a narrow practical use outside outside of use with EC2 autoscaling group.
 
-Cloudformation create_stack upon every matching new function discovery Cloudtrail event trigger:
+Cloudformation create_stack upon every matching new function discovery Cloudtrail event trigger.
     This may not be the most efficient or scalable compared to an update_stack but
     for the context of this project creating a new stack requires the least developmental work for simple testing
 
