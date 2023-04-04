@@ -2,7 +2,6 @@ import boto3
 import json
 import io
 import random
-import subprocess
 from zipfile import ZipFile, ZIP_DEFLATED
 from botocore.exceptions import ClientError
 snsclient = boto3.client('sns')
@@ -51,7 +50,7 @@ def Get_CF_Permissions():
 
 
 
-#Stack containing Ec2 discovery Event with Config service
+#Stack containing Ec2 discovery Event with Config service -template3.yaml
 def Main_Event_Stack(cfroles):
     if cfroles != 0:   
         with open('Ec2_Lambda_Monitoring_Provisions/VM_Provisions/template3.yaml') as obj:
@@ -138,8 +137,7 @@ def Create_Bucket_Resources(stack_status):
 
  
 
-#Launches stack containing logs manager function, event for monitoring lambdas and iam permissions
-#template1
+#Launches stack containing logs manager function, event for monitoring lambdas and iam permissions- template1.yaml
 def Diagnostics_Stack(cfroles, upload_status):
     if upload_status != 0:
         with open('Ec2_Lambda_Monitoring_Provisions//VM_Provisions/template1.yaml') as templateobj:

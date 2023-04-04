@@ -24,7 +24,6 @@ def lambda_handler(event, context):
                 instance_id
             ]
         )
-        #put in condition for attached status
         if 'Reservations' in response:
             for x in response['Reservations']:
                 instance = x['Instances'][0]

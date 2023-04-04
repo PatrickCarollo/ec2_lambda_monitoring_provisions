@@ -9,8 +9,7 @@ Create roles:
 aws iam create-role --role-name stackeventec2provsrole --assume-role-policy-document '{
     "Version": "2012-10-17",
     "Statement": [
-        {
-            "Sid": "",
+        {   
             "Effect": "Allow",
             "Principal": {
                 "Service": "cloudformation.amazonaws.com"
@@ -24,8 +23,7 @@ aws iam create-role --role-name stackeventec2provsrole --assume-role-policy-docu
 aws iam create-role --role-name stacklambdaprovsrole --assume-role-policy-document '{
     "Version": "2012-10-17",
     "Statement": [
-        {
-            "Sid": "",
+        {   
             "Effect": "Allow",
             "Principal": {
                 "Service": "cloudformation.amazonaws.com"
@@ -87,13 +85,13 @@ aws iam put-role-policy --role-name stacklambdaprovsrole --policy-name stacklamb
         },
         {
             "Effect": "Allow",
-            "Action": "s3:*"
+            "Action": "s3:*",
             "Resource": "*"
         },
         {
             "Effect": "Allow",
             "Action": "iam:*",
             "Resource": "*" 
-        }'
+        }
     ]
 }'

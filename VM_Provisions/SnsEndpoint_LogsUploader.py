@@ -15,7 +15,7 @@ def lambda_handler(event, context):
         path_key = 'LambdaLogs/ErrDetectedLogs/' + message_data['function_name'] + ':'+ json.dumps(datetime.now())
         object_body = Fetch_Err_Logs(message_data['function_name'])    
     else:  
-        path_key = 'LambdaLogs/SuccessLogs/' + event['function_name'] + ':'+ json.dumps(datetime.now())
+        path_key = 'LambdaLogs/SuccessLogs/' + message_data['function_name'] + ':'+ json.dumps(datetime.now())
         object_body = json.dumps(message_data)
 
     response = s3client.putobject(
