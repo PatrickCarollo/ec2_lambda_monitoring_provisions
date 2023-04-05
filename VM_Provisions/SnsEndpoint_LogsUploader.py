@@ -19,7 +19,7 @@ def lambda_handler(event, context):
         object_body = json.dumps(message_data)
 
     response = s3client.putobject(
-        Bucket = 'VMProvisionsResources-' + event['build_id'],
+        Bucket = 'vmmonitoringresources-' + event['build_id'],
         Key = path_key,
         Body = object_body
     )

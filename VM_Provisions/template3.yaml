@@ -12,7 +12,7 @@ Parameters:
         Type: String
 Resources:
     #Creates lambda function to trigger upon instance_launch event with target that launches instance monitoring resources
-    Resourcediscoveryfunction:
+    Ec2eventtargetfunction:
         Type: AWS::Lambda::Function
         Properties:
             FunctionName: 'ec2discendpoint'
@@ -39,26 +39,24 @@ Resources:
     Configdiscoveryevent:
         Type: AWS::Events::Rule
         Properties:
-            Name: 'Configec2discoveryevent0'
+            Name: 'Configec2discoveryevent'
             RoleArn: !GetAtt Configeventrole.Arn
             EventPattern:
-                Name: 'Configec2discoveryevent'
-                EventPattern:
-                    source: 
-                        - "aws.config"
-                    detail-type: 
-                        - "Config Configuration Item Change"
-                    detail: 
-                        messageType: 
-                            - "ConfigurationItemChangeNotification"
-                        configurationItem: 
-                            resourceType: 
-                                - "AWS::EC2::Instance"
-                            configurationItemStatus: 
-                                - "ResourceDiscovered"
+                source: 
+                    - "aws.config"
+                detail-type: 
+                    - "Config Configuration Item Change"
+                detail: 
+                    messageType: 
+                        - "ConfigurationItemChangeNotification"
+                    configurationItem: 
+                        resourceType: 
+                            - "AWS::EC2::Instance"
+                        configurationItemStatus: 
+                            - "ResourceDiscovered"
             Targets:
                 -   
-                    Arn: !GetAtt Resourcediscoveryfunction.Arn
+                    Arn: !GetAtt Ec2eventtargetfunction.Arn
                     Id: 'lambdafunctionforec2provisions'
                     InputTransformer:
                         InputPathsMap:
@@ -137,7 +135,7 @@ Resources:
                                 Resource: '*'                        
                             -   Effect: Allow
                                 Action: 'lambda:InvokeFunction'
-                                Resource: !GetAtt Resourcediscoveryfunction.Arn
+                                Resource: !GetAtt Ec2eventtargetfunction.Arn
     #to be used for monitoring stack creation
     Cloudformationec2provisionsrole:
         Type: AWS::IAM::Role
@@ -202,7 +200,7 @@ Outputs:
         Export:
             Name: !Sub '${AWS::StackName}-topicarn'
     existingfunctionarn:
-        Value: !GetAtt Resourcediscoveryfunction.Arn
+        Value: !GetAtt Ec2eventtargetfunction.Arn
         Export:
             Name: !Sub '${AWS::StackName}-existingfunction'                                       
     rolearn:

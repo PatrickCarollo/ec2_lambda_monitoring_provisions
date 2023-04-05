@@ -138,7 +138,7 @@ Resources:
                                     -   'logs:PutLogEvents'
                             -   Effect: Allow
                                 Action: "s3:PutObject"
-                                Resource: '*'                          
+                                Resource: !Sub 'arn:aws:s3:::vmmonitoringsresources-${buildid}/LambdaLogs/*'                        
                             -   Effect: Allow
                                 Action:
                                     -   "logs:DescribeLogStreams"
@@ -187,15 +187,14 @@ Resources:
                 Version: "2012-10-17"
                 Statement:
                     -   Effect: Allow
-                    Principal:
-                        Service: cloudformation.amazonaws.com
-                Action: 'sts:AssumeRole'
+                        Principal:
+                            Service: cloudformation.amazonaws.com
+                        Action: 'sts:AssumeRole'
             Policies:
                 -   PolicyName: root
                     PolicyDocument:
                         Version: "2012-10-17"
                         Statement:
-                           
                             -   Effect: Allow
                                 Action: 
                                     -   'eventbridge:*'
