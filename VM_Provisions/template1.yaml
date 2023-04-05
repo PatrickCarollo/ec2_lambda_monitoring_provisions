@@ -63,7 +63,7 @@ Resources:
                         Fn::ImportValue: !Sub 'Main_Event_Stack${buildid}-topicarn'
                     buildid: !Ref buildid
             Code:
-                S3Bucket: !Sub 'vmprovisionsresources-${buildid}'
+                S3Bucket: !Sub 'vmmonitoringsresources-${buildid}'
                 S3Key: 'Resources/FunctionDesignation.py'
 
         DependsOn: CloudTrailLambdaEvent    
@@ -79,7 +79,7 @@ Resources:
             Handler: SnsEndpoint_LogsUploader.lambda_handler
             Role: !GetAtt Lambdas3cwlogsrole.Arn
             Code:
-                S3Bucket: !Sub 'vmprovisionsresources-${buildid}'
+                S3Bucket: !Sub 'vmmonitoringsresources-${buildid}'
                 S3Key: 'Resources/logs3uploadfunctioncode.py'
    
             Tags: 
@@ -157,9 +157,9 @@ Resources:
                 Version: "2012-10-17"
                 Statement:
                     -   Effect: Allow
-                    Principal:
-                        Service: lambda.amazonaws.com
-                Action: 'sts:AssumeRole'
+                        Principal:
+                            Service: lambda.amazonaws.com
+                        Action: 'sts:AssumeRole'
             Policies:
                 -   PolicyName: root
                     PolicyDocument:

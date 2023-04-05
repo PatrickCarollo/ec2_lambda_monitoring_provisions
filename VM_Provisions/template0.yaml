@@ -40,7 +40,7 @@ Resources:
                         - buildid: !Ref buildid
                     buildid: !Ref buildid
             Code:
-                S3Bucket: !Sub 'vmprovisionsresources-${buildid}'
+                S3Bucket: !Sub 'vmmonitoringsresources-${buildid}'
                 S3Key: 'Resources/Ebs_Scheduled.py'
             Tags:
                 -   Key: 'invocation'

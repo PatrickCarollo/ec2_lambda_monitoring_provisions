@@ -28,7 +28,7 @@ def Bucket_Create():
     #Creates bucket for template sources and upload destination for CW lambda logs
     try:
         response = s3client.create_bucket(
-            Bucket = 'deploymentresources-' + buildid
+            Bucket = 'vmmonitoringsresources-' + buildid
         )
         print('Resources bucket launched: '+ 'deploymentresources-' + buildid)
         return response
@@ -65,7 +65,7 @@ def Create_Bucket_Resources(bkt_status):
                 object_key = obj_key 
             try:
                 response = s3client.put_object(
-                    Bucket = 'vmprovisionsresources-' + buildid ,
+                    Bucket = 'vmmonitoringsresources-' + buildid ,
                     Body = object_body , 
                     Key = 'Resources/'+ object_key
                 )
@@ -137,7 +137,7 @@ def Main_Event_Stack(cfroles):
                 )
                 if 'StackId' in response:
                     data = response['StackId']
-                    print('launched stack for lambda execution lgos')
+                    print('EC2 Config event stack success')
                 else:
                     print('Logs stack for lambda failed to create')
                     data = 0
@@ -150,14 +150,14 @@ def Main_Event_Stack(cfroles):
 #Launches stack containing logs manager function, event for monitoring lambdas and iam permissions- template1.yaml
 def Diagnostics_Stack(cfroles, upload_status):
     if upload_status != 0:
-        with open('Ec2_Lambda_Monitoring_Provisions//VM_Provisions/template1.yaml') as templateobj:
+        with open('Ec2_Lambda_Monitoring_Provisions/VM_Provisions/template1.yaml') as templateobj:
             template = templateobj.read()
         try:
             response = cfclient.create_stack(
                 StackName = 'CWLogsUpload'+ buildid,
                 Capabilities = ['CAPABILITY_NAMED_IAM'],
                 TemplateBody = template,
-                RoleArn = cfroles['stacklambdaprovsrole'],
+                RoleARN = cfroles['stacklambdaprovsrole'],
                 Tags = [
                     {
                         'Key': 'buildid',

@@ -27,7 +27,7 @@ Resources:
             Code:
                 S3Bucket: !Join
                     -   ''
-                    -   - 'vmprovisionsresources-'
+                    -   - 'vmmonitoringsresources-'
                         - !Ref buildid
                 S3Key: 'Resources/Resource_Discovery_Endpoint.zip'
             Environment:
@@ -65,12 +65,6 @@ Resources:
                             "instanceid": "$.detail.configurationItem.resourceId"
                         InputTemplate: |
                             {"instance_id": <instanceid>}
-   
-    #Main resources bucket        
-    Resourcebucket:
-        Type: AWS::S3::Bucket
-        Properties:
-            BucketName: !Sub 'vmprovisionsresources-${buildid}'
     
     #topic to handle usage notifs and be subscribed to by provision functions
     Snstopic:
@@ -118,7 +112,7 @@ Resources:
                                 Resource: "*"
                             -   Effect: Allow
                                 Action: 'sns:publish'
-                                Resource: !GetAtt Snstopic.Arn
+                                Resource: !GetAtt Snstopic.TopicArn
     #to be used by event rule&target
     Configeventrole:
         Type: AWS::IAM::Role
@@ -170,7 +164,7 @@ Resources:
                                 Resource: '*'                 
                             -   Effect: Allow
                                 Action: 's3:GetObject'
-                                Resource: !Sub 'vmprovisionsresources-${buildid}/Resources/Ebs_Scheduled.py'
+                                Resource: !Sub 'arn:aws:s3:::vmmonitoringsresources-${buildid}/Resources/Ebs_Scheduled.py'
                             -   Effect: Allow
                                 Action: 
                                     - 'lambda:CreateFunction'
@@ -185,15 +179,15 @@ Resources:
                                 Resource: '*'
                             -   Effect: Allow
                                 Action: 
-                                    -   'iam:CreateRole',
-                                    -   'iam:UpdateRole',
-                                    -   'iam:GetRole',
-                                    -   'iam:DeleteRole',
-                                    -   'iam:PutRolePolicy',
-                                    -   'iam:DetachRolePolicy',
-                                    -   'iam:DeleteRolePolicy',
-                                    -   'iam:AttachRolePolicy',
-                                    -   'iam:PassRole'
+                                    - 'iam:CreateRole'
+                                    - 'iam:UpdateRole'
+                                    - 'iam:GetRole'
+                                    - 'iam:DeleteRole'
+                                    - 'iam:PutRolePolicy'
+                                    - 'iam:DetachRolePolicy'
+                                    - 'iam:DeleteRolePolicy'
+                                    - 'iam:AttachRolePolicy'
+                                    - 'iam:PassRole'
                                 Resource: '*'
 
 
@@ -204,7 +198,7 @@ Resources:
 #ARNs for assignment function to add target to rule upon new function discovered
 Outputs:
     topicarn:
-        Value: !Ref Snstopic
+        Value: !GetAtt Snstopic.TopicArn
         Export:
             Name: !Sub '${AWS::StackName}-topicarn'
     existingfunctionarn:
