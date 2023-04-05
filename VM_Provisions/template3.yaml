@@ -70,15 +70,13 @@ Resources:
     Resourcebucket:
         Type: AWS::S3::Bucket
         Properties:
-            VersioningConfiguration:
-                Status: Enabled
-        BucketName: !Sub 'vmprovisionsresources-${buildid}'
+            BucketName: !Sub 'vmprovisionsresources-${buildid}'
     
     #topic to handle usage notifs and be subscribed to by provision functions
     Snstopic:
         Type: AWS::SNS::Topic
         Properties:
-            TopicName: 'VmProvisions'
+            TopicName: 'VmMonitoring'
     Subscribeemail:
         Type: AWS::SNS::Subscription
         Properties: 
@@ -108,10 +106,9 @@ Resources:
                                 Action: 'cloudformation:CreateStack'
                                 Resource: "*"                    
                             -   Effect: Allow
-                                Action: 'cloudformation:CreateStack'
-                                Resource: "*"
-                            -   Effect: Allow
-                                Action: 'ec2:DescribeInstances'
+                                Action: 
+                                    - 'ec2:DescribeInstances'
+                                    - 'ec2:DescribeInstanceStatus'
                                 Resource: "*"
                             -   Effect: Allow
                                 Action:
@@ -168,22 +165,35 @@ Resources:
                         Statement: 
                             -   Effect: Allow
                                 Action: 
-                                    - 'cloudwatch:*'
+                                    - 'cloudwatch:PutMetricAlarm'
+                                    - 'cloudwatch:DeleteMetricAlarm'
                                 Resource: '*'                 
                             -   Effect: Allow
                                 Action: 's3:GetObject'
+                                Resource: !Sub 'vmprovisionsresources-${buildid}/Resources/Ebs_Scheduled.py'
+                            -   Effect: Allow
+                                Action: 
+                                    - 'lambda:CreateFunction'
+                                    - 'lambda:DeleteFunction'
                                 Resource: '*'
                             -   Effect: Allow
                                 Action: 
-                                    - 'lambda:*'
-                                Resource: '*''
-                            -   Effect: Allow
-                                Action: 
-                                    - 'events:*'
+                                    - 'events:PutEvents'
+                                    - 'events:DeleteEvents'
+                                    - 'events:PutRule'
+                                    - 'events:EnableRule'
                                 Resource: '*'
                             -   Effect: Allow
                                 Action: 
-                                    -   'iam:*'
+                                    -   'iam:CreateRole',
+                                    -   'iam:UpdateRole',
+                                    -   'iam:GetRole',
+                                    -   'iam:DeleteRole',
+                                    -   'iam:PutRolePolicy',
+                                    -   'iam:DetachRolePolicy',
+                                    -   'iam:DeleteRolePolicy',
+                                    -   'iam:AttachRolePolicy',
+                                    -   'iam:PassRole'
                                 Resource: '*'
 
 

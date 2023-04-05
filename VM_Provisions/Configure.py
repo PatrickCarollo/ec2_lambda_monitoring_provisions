@@ -18,88 +18,33 @@ command = input('deploy/cleanup: ')
 #Sets global variables for setup of resources
 def Set_Variables():
     global buildid
-    buildid = input('enter unique numerical multi-digit number for tag set')
+    buildid = input('enter unique numerical multi-digit number for tag set: ')
     global tag_value 
     tag_value = input('Enter value of tag name "Environment" to deploy provisions to: ').strip()
     global confirm
     confirm = input('"' + tag_value + '"? y/n: ')
     
+def Bucket_Create():
+    #Creates bucket for template sources and upload destination for CW lambda logs
+    try:
+        response = s3client.create_bucket(
+            Bucket = 'deploymentresources-' + buildid
+        )
+        print('Resources bucket launched: '+ 'deploymentresources-' + buildid)
+        return response
+    except ClientError as e:
+        print("Client error: %s" % e)
+        return 0
 
 
-#Gets iam roleARNS for create_stack to assume, these are passed to necessary lambda functions
-def Get_CF_Permissions():
-    if confirm == 'y': 
-        role_arns = {}
-        role_names = [
-            'stacklambdaprovsrole',
-            'stackeventec2provsrole'
-        ]
-    for x in role_names:
-        try:
-            response = iamclient.get_role(
-                RoleName = x
-            )
-            if 'Arn' in response['Role']:
-                role_arns[x] = response['Role']['Arn'].strip()
-                return role_arns
-            else:
-                return 0
-        except ClientError as e:
-            print("Client error: %s" % e)
-    return role_arns    
-
-
-
-#Stack containing Ec2 discovery Event with Config service -template3.yaml
-def Main_Event_Stack(cfroles):
-    if cfroles != 0:   
-        with open('Ec2_Lambda_Monitoring_Provisions/VM_Provisions/template3.yaml') as obj:
-            template = obj.read()
-        email = input('Enter email to recieve instance notifications at: ').strip()  
-        confirmed_email = input('"' + email + '"?: y/n')
-        if confirmed_email == 'y':
-            try:
-                response = cfclient.create_stack(
-                    StackName = 'Main-Event-Stack'+ buildid,
-                    Capabilities = ['CAPABILITY_NAMED_IAM'],
-                    RoleARN = cfroles['stackeventforec2role'],
-                    TemplateBody = template,
-                    Parameters = [
-                        {
-                            'ParameterKey': 'buildid',
-                            'ParameterValue': buildid
-                        },
-                        {
-                            'ParameterKey': 'specifiedtagvalue',
-                            'ParameterValue': tag_value
-                        },
-                        {
-                            'ParameterKey': 'personalemail',
-                            'ParameterValue': email
-                        }
-                    ]
-                )
-                if 'StackId' in response:
-                    data = response['StackId']
-                    print('launched stack for lambda execution lgos')
-                else:
-                    print('Logs stack for lambda failed to create')
-                    data = 0
-                return data
-            except ClientError as e:
-                print('Client error: %s' % e)    
-
-
-
-#Creates bucket for template source and upload destination for CW lambda logs
-def Create_Bucket_Resources(stack_status):
-    if stack_status != 0:
+def Create_Bucket_Resources(bkt_status):
+    if bkt_status != 0:
         objects = [
-            'Ec2_Lambda_Monitoring_Provisions//VM_Provisions/template0.yaml',
-            'Ec2_Lambda_Monitoring_Provisions//VM_Provisions/Ebs_Scheduled.py',
-            'Ec2_Lambda_Monitoring_Provisions//VM_Provisions/template2.yaml',
-            'Ec2_Lambda_Monitoring_Provisions//VM_Provisions/SnsEndpoint_LogsUploader.py' ,
-            'Ec2_Lambda_Monitoring_Provisions//VM_Provisions/Resource_Discovery_Endpoint.py' 
+            'Ec2_Lambda_Monitoring_Provisions/VM_Provisions/template0.yaml',
+            'Ec2_Lambda_Monitoring_Provisions/VM_Provisions/Ebs_Scheduled.py',
+            'Ec2_Lambda_Monitoring_Provisions/VM_Provisions/template2.yaml',
+            'Ec2_Lambda_Monitoring_Provisions/VM_Provisions/SnsEndpoint_LogsUploader.py' ,
+            'Ec2_Lambda_Monitoring_Provisions/VM_Provisions/Resource_Discovery_Endpoint.py' 
         ]    
         successes = []
         for x in objects:
@@ -135,7 +80,72 @@ def Create_Bucket_Resources(stack_status):
         print('failed at subscribe SNS')
         return data
 
- 
+
+
+#Gets iam roleARNS for create_stack to assume, these are passed to necessary lambda functions
+def Get_CF_Permissions(upload_status):
+    if confirm == 'y': 
+        role_arns = {}
+        role_names = [
+            'stacklambdaprovsrole',
+            'stackeventec2provsrole'
+        ]
+    for x in role_names:
+        try:
+            response = iamclient.get_role(
+                RoleName = x
+            )
+            if 'Arn' in response['Role']:
+                role_arns[x] = response['Role']['Arn'].strip()
+            else:
+                return 0
+        except ClientError as e:
+            print("Client error: %s" % e)
+    print(role_arns)
+    return role_arns    
+
+
+
+#Stack containing Ec2 discovery Event with Config service -template3.yaml
+def Main_Event_Stack(cfroles):
+    if cfroles != 0:   
+        with open('Ec2_Lambda_Monitoring_Provisions/VM_Provisions/template3.yaml') as obj:
+            template = obj.read()
+        email = input('Enter email to recieve instance notifications at: ').strip()  
+        confirmed_email = input('"' + email + '"?: y/n: ').strip()
+        if confirmed_email == 'y':
+            try:
+                response = cfclient.create_stack(
+                    StackName = 'Main-Event-Stack'+ buildid,
+                    Capabilities = ['CAPABILITY_NAMED_IAM'],
+                    RoleARN = cfroles['stackeventec2provsrole'],
+                    TemplateBody = template,
+                    Parameters = [
+                        {
+                            'ParameterKey': 'buildid',
+                            'ParameterValue': buildid
+                        },
+                        {
+                            'ParameterKey': 'specifiedtagvalue',
+                            'ParameterValue': tag_value
+                        },
+                        {
+                            'ParameterKey': 'personalemail',
+                            'ParameterValue': email
+                        }
+                    ]
+                )
+                if 'StackId' in response:
+                    data = response['StackId']
+                    print('launched stack for lambda execution lgos')
+                else:
+                    print('Logs stack for lambda failed to create')
+                    data = 0
+                return data
+            except ClientError as e:
+                print('Client error: %s' % e)    
+
+
 
 #Launches stack containing logs manager function, event for monitoring lambdas and iam permissions- template1.yaml
 def Diagnostics_Stack(cfroles, upload_status):
@@ -240,10 +250,11 @@ def Delete_Cf_Roles(resources):
 def main():    
     if command == 'deploy':
         Set_Variables()
-        q = Get_CF_Permissions()
-        a = Main_Event_Stack(q)
-        o = Create_Bucket_Resources(a)
-        Diagnostics_Stack(q,o)
+        a = Bucket_Create()
+        b = Create_Bucket_Resources(a)
+        c = Get_CF_Permissions(b)
+        d = Main_Event_Stack(c)
+        Diagnostics_Stack(c,d)
     elif command == 'cleanup':
         h = Get_Resources_For_Deletion()
         Delete_Cf_Stacks(h)

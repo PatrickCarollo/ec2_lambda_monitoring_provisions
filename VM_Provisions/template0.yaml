@@ -18,7 +18,7 @@ Resources:
             Namespace: AWS/EC2
             Dimensions: !Ref instanceid
             MetricName: CPUUtilization
-            Threshold: 65
+            Threshold: 14 #set for test purposes
             Statistic:  Average
             ComparisonOperator: GreaterThanOrEqualToThreshold
             Period: 180
