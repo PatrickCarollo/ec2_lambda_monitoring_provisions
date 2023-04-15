@@ -9,31 +9,28 @@ ec2client = boto3.client('ec2')
 cfclient = boto3.client('cloudformation')
 snsclient = boto3.client('sns')
 s3client = boto3.client('s3')
+dbclient = boto3.client('dynamodb')
 env_variables = os.environ
 
 
 #Gets details on instance discovered
 def lambda_handler(event, context):
-    global instance_id
-    instance_id = event['instanceid']
-    global env_variables
-    env_variables = os.environ
 
-        for x in response['Reservations']:
-            instance = x['Instances'][0]
-            data = {
-                'imageid': instance['ImageId'],
-                'instancetype': instance['InstanceType'],
-                'ebsid': instance['BlockDeviceMappings'][0]['Ebs']['VolumeId'],
-                'tagvalue': instance['Tags'][0]['Value']
-            }
-        Provisions_Stack_Create(data)
-            
-    except ClientError as e:
-        print("Client error: %s" % e)
+    try:
+
+        instance_data = {}
+        instance_data['instance_id'] = event['instance_id']
+        instance_data['ec2_tags'] = event['ec2_tags']
+        instance_data['instance_type'] = event['instance_type']
+        instance_data['image_id'] = event['image_id']
+        instance_data['detailedmonitoring'] = event['detailedmonitoring']
+        instance_data['volume_data'] = event['volume_data']
+        
+        Provisions_Stack_Create(instance_data)
+    except:
         stack_status = 'null'
-        data = 'describe_instance fail'
-        Sns_Notification(data, stack_status)        
+        instance_data = 'failed to parse instanced data from event'
+        Sns_Notification(instance_data, stack_status)        
         
 
 def Get_Template():
@@ -42,8 +39,7 @@ def Get_Template():
         ind = object_data.find('/')
         bucket_name = object_data[:ind]
         key = object_data[ind+1:]
-
-  
+        
         response = s3client.get_object(
             Bucket = bucket_name,
             Key = key
@@ -56,9 +52,11 @@ def Get_Template():
         Sns_Notification(data, stack_status) 
 
 
+
+
 #To deploy instance usage monitor with notifications and automated ebs snapshots
 def Provisions_Stack_Create(instance_data):
-    if instance_data['tagvalue'] == env_variables['specified_tag_value']:
+    if instance_data['ec2_tags'] == env_variables['specified_tag_value']:
         object_body = Get_Template()
         try:
             response = cfclient.create_stack(
@@ -75,11 +73,11 @@ def Provisions_Stack_Create(instance_data):
                 Parameters = [
                     {
                         'ParameterKey': 'volumeid',
-                        'ParameterValue': instance_data['ebsid']
+                        'ParameterValue': instance_data['volume_data']
                     },
                     {
                         'ParameterKey': 'instanceid',
-                        'ParameterValue': instance_id
+                        'ParameterValue': instance_data['instance_id']
                     },
                     {
                         'ParameterKey': 'buildid',
@@ -87,16 +85,27 @@ def Provisions_Stack_Create(instance_data):
                     }
                 ]
             )
-            stack_data = {'tagmatched': True, 'Begin_Ec2_Provisions_Stack': 'success'}
+            stack_data = {'tagmatched': True, 'Begin_Ec2_Provisions_Stack': True}
             Sns_Notification(instance_data, stack_data)
+            Update_Instances_Object(instance_data)
         except ClientError as e:
             print("Client error: %s" % e)
-            stack_data = {'tagmatched': True, 'Begin_Ec2_Provisions_Stack': 'fail'}
+            stack_data = {'tagmatched': True, 'Begin_Ec2_Provisions_Stack': False}
             Sns_Notification(instance_data, stack_data)
     else:
         stack_data = {'tagmatched': False}
         Sns_Notification(instance_data, stack_data)
 
+
+
+def Update_Instances_Object(instance_data):
+
+    try:
+        #TODO:update table api
+        )
+        
+    
+    
 
 
 #Publishes upon any instance launch discovery and sends results of provisions launch if tag is matched; 
