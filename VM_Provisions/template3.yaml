@@ -32,16 +32,23 @@ Resources:
                 S3Key: 'Resources/Resource_Discovery_Endpoint.zip'
             Environment:
                 Variables:
-                    tag_value: !Ref specifiedtagvalue
+                    specified_tag_value: !Ref specifiedtagvalue
                     cfrole: !GetAtt Cloudformationec2provisionsrole.Arn
                     buildid: !Ref buildid
+                    tablename: !Ref Instanceidstable
+                    topicarn: !Ref Snstopic
+                    bucketkey: !Join
+                        -   ''
+                        -   - 'vmmonitoringsresources-'
+                            - !Ref buildid
+                            - '/Resources/template0.yaml'
     #Event for ec2 launch discovery config event with a lambda function target 
     Configdiscoveryevent:
         Type: AWS::Events::Rule
         Properties:
             Name: 'Configec2discoveryevent'
             RoleArn: !GetAtt Configeventrole.Arn
-            EventPattern:
+            EventPattern:   
                 source: 
                     - "aws.config"
                 detail-type: 
@@ -61,8 +68,20 @@ Resources:
                     InputTransformer:
                         InputPathsMap:
                             "instanceid": "$.detail.configurationItem.resourceId"
+                            "tags": "$.detail.configurationItem.tags"
+                            "instancetype": "$.detail.configurationItem.configuration.instanceType"
+                            "image": "$.detail.configurationItem.configuration.imageid"
+                            "monitoring": "$.detail.configurationItem.configuration.monitoring.state"
+                            "volumedata": "$.detail.configurationItem.relationships"
                         InputTemplate: |
-                            {"instance_id": <instanceid>}
+                            {
+                                "instance_id": <instanceid>,
+                                "ec2_tags": <tags>,
+                                "instance_type": <instancetype>,
+                                "image_id": <image>,
+                                "detailedmonitoring": <monitoring>,    
+                                "volume_data": <volumedata>
+                            }
     
     #topic to handle usage notifs and be subscribed to by provision functions
     Snstopic:
@@ -75,7 +94,25 @@ Resources:
             Protocol: email-json
             TopicArn: !Ref Snstopic
             Endpoint: !Ref personalemail
-    #to be used by ec2 provisions function
+    
+    
+    #Table to store instance ids to run scheduled function on
+    Instanceidstable:
+        Type: AWS::DynamoDB::Table
+        Properties:
+            TableName: 'InstanceIDs'
+            AttributeDefinitions:
+                - AttributeName: 'InstanceIds'
+                  AttributeType: 'S'
+            KeySchema:
+                - AttributeName: 'InstanceIds'
+                  KeyType: 'HASH'
+            ProvisionedThroughput:
+                ReadCapacityUnits: 3
+                WriteCapacityUnits: 3
+    
+    
+    #Assumed used by ec2 provisions function
     Provisioninglaunchrole:
         Type: AWS::IAM::Role
         Properties:    
@@ -111,6 +148,12 @@ Resources:
                             -   Effect: Allow
                                 Action: 'sns:publish'
                                 Resource: !GetAtt Snstopic.TopicArn
+                            -   Effect: Allow
+                                Action: 'iam:PassRole'
+                                Resource: !GetAtt Cloudformationec2provisionsrole.Arn
+                            -   Effect: Allow
+                                Action: 's3:GetObject'
+                                Resource: !Sub 'arn:aws:s3:::vmmonitoringsresources-${buildid}/Resources/*'
     #to be used by event rule&target
     Configeventrole:
         Type: AWS::IAM::Role
@@ -158,15 +201,18 @@ Resources:
                             -   Effect: Allow
                                 Action: 
                                     - 'cloudwatch:PutMetricAlarm'
-                                    - 'cloudwatch:DeleteMetricAlarm'
+                                    - 'cloudwatch:DescribeAlarms'
+                                    - 'cloudwatch:DeleteAlarms'
                                 Resource: '*'                 
                             -   Effect: Allow
                                 Action: 's3:GetObject'
-                                Resource: !Sub 'arn:aws:s3:::vmmonitoringsresources-${buildid}/Resources/Ebs_Scheduled.py'
+                                Resource: !Sub 'arn:aws:s3:::vmmonitoringsresources-${buildid}/Resources/*'
                             -   Effect: Allow
                                 Action: 
                                     - 'lambda:CreateFunction'
                                     - 'lambda:DeleteFunction'
+                                    - 'lambda:TagResource'
+                                    - 'lambda:GetFunction'
                                 Resource: '*'
                             -   Effect: Allow
                                 Action: 
@@ -174,6 +220,10 @@ Resources:
                                     - 'events:DeleteEvents'
                                     - 'events:PutRule'
                                     - 'events:EnableRule'
+                                    - 'events:DescribeRule'
+                                    - 'events:RemoveTargets'
+                                    - 'events:PutTargets'
+                                    - 'events:DeleteRule'
                                 Resource: '*'
                             -   Effect: Allow
                                 Action: 
@@ -186,6 +236,7 @@ Resources:
                                     - 'iam:DeleteRolePolicy'
                                     - 'iam:AttachRolePolicy'
                                     - 'iam:PassRole'
+                                    - 'iam:CreateServiceLinkedRole'
                                 Resource: '*'
 
 

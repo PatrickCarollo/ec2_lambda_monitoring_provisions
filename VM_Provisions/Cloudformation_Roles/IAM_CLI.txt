@@ -64,7 +64,12 @@ aws iam put-role-policy --role-name stackeventec2provsrole --policy-name stackev
         {    "Effect": "Allow",
             "Action": "iam:*",
             "Resource": "*"
-        }
+        },
+        {    "Effect": "Allow",
+            "Action": "dynamodb:*",
+            "Resource": "*"
+        }    
+    
     ]
 }'
 

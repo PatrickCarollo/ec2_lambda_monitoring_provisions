@@ -2,15 +2,15 @@
 #Created in initial launch
 import boto3
 import json
-import yaml
 from botocore.exceptions import ClientError
 import os
 
 ec2client = boto3.client('ec2')
 cfclient = boto3.client('cloudformation')
 snsclient = boto3.client('sns')
-
+s3client = boto3.client('s3')
 env_variables = os.environ
+
 
 #Gets details on instance discovered
 def lambda_handler(event, context):
@@ -18,44 +18,55 @@ def lambda_handler(event, context):
     instance_id = event['instanceid']
     global env_variables
     env_variables = os.environ
-    try:
-        response = ec2client.describe_instances(
-            InstanceIds = [
-                instance_id
-            ]
-        )
-        if 'Reservations' in response:
-            for x in response['Reservations']:
-                instance = x['Instances'][0]
-                data = {
-                    'imageid': instance['ImageId'],
-                    'instancetype': instance['InstanceType'],
-                    'monitoring': instance['Monitoring'],
-                    'ebsid': instance['BlockDeviceMappings'][0]['Ebs']['VolumeId'],
-                    'tagvalue': instance['Tags'][0]['Value']
-                }
-            Provisions_Stack_Create(data)
-        else:
-            stack_status = 'error'
-            Sns_Notification(data, stack_status)
+
+        for x in response['Reservations']:
+            instance = x['Instances'][0]
+            data = {
+                'imageid': instance['ImageId'],
+                'instancetype': instance['InstanceType'],
+                'ebsid': instance['BlockDeviceMappings'][0]['Ebs']['VolumeId'],
+                'tagvalue': instance['Tags'][0]['Value']
+            }
+        Provisions_Stack_Create(data)
+            
     except ClientError as e:
         print("Client error: %s" % e)
+        stack_status = 'null'
+        data = 'describe_instance fail'
+        Sns_Notification(data, stack_status)        
+        
 
+def Get_Template():
+    try:
+        object_data = env_variables['bucketkey']
+        ind = object_data.find('/')
+        bucket_name = object_data[:ind]
+        key = object_data[ind+1:]
+
+  
+        response = s3client.get_object(
+            Bucket = bucket_name,
+            Key = key
+        )
+        data = response['Body'].read().decode('utf-8')
+        return data
+    except ClientError as e:
+        print("Client error: %s" % e)
+        stack_status = 'null'
+        Sns_Notification(data, stack_status) 
 
 
 #To deploy instance usage monitor with notifications and automated ebs snapshots
 def Provisions_Stack_Create(instance_data):
-    if instance_data['tagvalue'] == env_variables['specifiedtagvalue']:
-        tag_match = True
-        object_url = 'https://{}.s3.amazonaws.com/{}'.format('VMProvisionsResources-' + env_variables['buildid'],
-        'Resources/template0')
+    if instance_data['tagvalue'] == env_variables['specified_tag_value']:
+        object_body = Get_Template()
         try:
             response = cfclient.create_stack(
                 StackName = 'Ec2Provisions' + env_variables['buildid'] ,
                 Capabilities = ['CAPABILITY_NAMED_IAM'],
-                RoleArn = env_variables['cfrole'],
-                TemplateURL = object_url,
-                Tags=[
+                RoleARN = env_variables['cfrole'],
+                TemplateBody = object_body,
+                Tags = [
                     {
                         'Key': 'buildid',
                         'Value': env_variables['buildid']
@@ -67,44 +78,43 @@ def Provisions_Stack_Create(instance_data):
                         'ParameterValue': instance_data['ebsid']
                     },
                     {
-                        'ParameterKey:': 'instanceid',
+                        'ParameterKey': 'instanceid',
                         'ParameterValue': instance_id
                     },
                     {
-                        'ParameterKey:': 'buildid',
+                        'ParameterKey': 'buildid',
                         'ParameterValue': env_variables['buildid']
-                    },
-
+                    }
                 ]
             )
-            if 'StackId' in response:
-                status = 'Success'
-            else:
-                status = 'Fail'
-            data = {'tagmatched': tag_match, 'Provisions_Stack_Create_Status': status}
-            Sns_Notification(instance_data, data)
+            stack_data = {'tagmatched': True, 'Begin_Ec2_Provisions_Stack': 'success'}
+            Sns_Notification(instance_data, stack_data)
         except ClientError as e:
             print("Client error: %s" % e)
+            stack_data = {'tagmatched': True, 'Begin_Ec2_Provisions_Stack': 'fail'}
+            Sns_Notification(instance_data, stack_data)
     else:
-        tag_match = False
-        data = {'tagmatched': tag_match, 'Provisions_Stack_Create_Status': 'null'}
-        Sns_Notification(instance_data, data)
+        stack_data = {'tagmatched': False}
+        Sns_Notification(instance_data, stack_data)
 
 
 
 #Publishes upon any instance launch discovery and sends results of provisions launch if tag is matched; 
 #if not, it sends null and instance id
 def Sns_Notification(instance_data, stack_status):
-    message_data = {}
-    Ec2_Discovery_Status = {}
-    Ec2_Discovery_Status['Discovered_Instance_Details'] = instance_data
-    Ec2_Discovery_Status['MonitoringservicesdeployStatus'] = stack_status
-    message_data['Ec2_Discovery_Status'] = Ec2_Discovery_Status
-    message_data['Function_Name'] = 'Resource_Discovery_Endpoint'
-    message_data['buildid'] = env_variables['buildid']
-    
-    response = snsclient.publish(
-        TopicArn = os.environ['topicarn'] ,
-        Message = message_data
-    )
-
+    try:
+        message_data = {}
+        Ec2_Discovery_Details = {}
+        Ec2_Discovery_Details['Discovered_Instance_Details'] = instance_data
+        Ec2_Discovery_Details['MonitoringservicesdeployStatus'] = stack_status
+        message_data['Ec2_Discovery_Details'] = Ec2_Discovery_Details
+        message_data['Function_Name'] = 'Resource_Discovery_Endpoint'
+        message_data['buildid'] = env_variables['buildid']
+        
+        response = snsclient.publish(
+            TopicArn = env_variables['topicarn'],
+            Message = json.dumps(message_data)
+        )
+        return message_data
+    except ClientError as e:
+        print("Client error: %s" % e)
