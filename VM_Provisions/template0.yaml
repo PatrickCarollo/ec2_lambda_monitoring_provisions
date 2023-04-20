@@ -7,14 +7,13 @@ Parameters:
         Type: String
     buildid:
         Type: String
+    tagvalue:
+        Type: String
 Resources:
     UsageMonitorAlarm:
         Type: AWS::CloudWatch::Alarm
         Properties:
-            AlarmName: !Join
-                - ''
-                -   - 'InstanceMonitoring'
-                    - !Ref buildid
+            AlarmName: !Sub '${tagvalue}-CPUutil-${instanceid}'
             Namespace: AWS/EC2
             Dimensions: 
                 -   Name: 'InstanceId'
@@ -28,97 +27,5 @@ Resources:
             AlarmActions: 
                 - Fn::ImportValue: !Sub 'Main-Event-Stack${buildid}-topicarn'
                 - !Sub 'arn:aws:automate:${AWS::Region}:ec2:reboot'
-    ScheduledSnapshotFunction:
-        Type: AWS::Lambda::Function
-        Properties:
-            Role: !GetAtt Ebsfunctionrole.Arn
-            Runtime: python3.8
-            Handler: 'Ebs_Scheduled.lambda_handler'
-            Environment:
-                Variables:
-                    instanceid: !Ref instanceid
-                    volumeid: !Ref volumeid
-                    topicarn: 
-                        Fn::ImportValue: !Sub 'Main-Event-Stack${buildid}-topicarn'
-            Code:
-                S3Bucket: !Sub 'vmmonitoringsresources-${buildid}'
-                S3Key: 'Resources/Ebs_Scheduled.zip'
-            Tags:
-                -   Key: 'invocation'
-                    Value: 'event'  
-                -   Key: 'buildid'
-                    Value: buildid
-    ScheduledSnapshotEvent:
-        Type: AWS::Events::Rule
-        Properties:
-            RoleArn: !GetAtt Ebseventrole.Arn
-            Name: !Join
-                - ''
-                -   - 'ScheduledSnapshots'
-                    - !Ref buildid 
-            ScheduleExpression: rate(15 minutes) #rate for testing
-            Targets:  
-                -   Id: 'snapshotfuntiontarget'
-                    Arn: !GetAtt ScheduledSnapshotFunction.Arn
-    Ebsfunctionrole:
-        Type: AWS::IAM::Role
-        Properties:
-            RoleName: !Join
-                - ''
-                -   - 'Scheduledsnapshotsfuncrole'
-                    - !Ref buildid
-            AssumeRolePolicyDocument:
-                Version: "2012-10-17"
-                Statement:
-                    -   Effect: Allow
-                        Principal:
-                            Service: lambda.amazonaws.com
-                        Action: 'sts:AssumeRole'
-            Policies:
-                -   PolicyName: root                    
-                    PolicyDocument:
-                        Version: "2012-10-17"
-                        Statement: 
-                            -   Effect: Allow
-                                Action:                 
-                                    - 'logs:CreateLogGroup'
-                                    - 'logs:CreateLogStream'
-                                    - 'logs:PutLogEvents'
-                                Resource: '*'           
-                            -   Effect: Allow
-                                Action: 
-                                    - 'ebs:CompleteSnapshot'
-                                    - 'ebs:StartSnapshot'
-                                Resource: '*'
-                            -   Effect: Allow
-                                Action: 'sns:publish'
-                                Resource: 
-                                    Fn::ImportValue: !Sub 'Main-Event-Stack${buildid}-topicarn'
-                            -   Effect: Allow
-                                Action: 
-                                    - 'ec2:StartInstances'
-                                    - 'ec2:StopInstances'
-                                Resource: '*'                     
-    Ebseventrole:
-        Type: AWS::IAM::Role
-        Properties:
-            RoleName: !Join
-                - ''
-                -   - 'Eventroleebssnap'
-                    - !Ref buildid
-            AssumeRolePolicyDocument:
-                Version: "2012-10-17"
-                Statement:
-                    -   Effect: Allow
-                        Principal:
-                            Service: events.amazonaws.com
-                        Action: 'sts:AssumeRole'
-            Policies:
-                -   PolicyName: root                    
-                    PolicyDocument:
-                        Version: "2012-10-17"
-                        Statement:
-                            -   Effect: Allow
-                                Action:
-                                    - 'lambda:InvokeFunction'
-                                Resource: !GetAtt ScheduledSnapshotFunction.Arn
+
+                     

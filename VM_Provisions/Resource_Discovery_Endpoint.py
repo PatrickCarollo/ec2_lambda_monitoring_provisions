@@ -9,15 +9,13 @@ ec2client = boto3.client('ec2')
 cfclient = boto3.client('cloudformation')
 snsclient = boto3.client('sns')
 s3client = boto3.client('s3')
-dbclient = boto3.client('dynamodb')
 env_variables = os.environ
 
 
 #Gets details on instance discovered
 def lambda_handler(event, context):
-
+    print(event)
     try:
-
         instance_data = {}
         instance_data['instance_id'] = event['instance_id']
         instance_data['ec2_tags'] = event['ec2_tags']
@@ -53,7 +51,6 @@ def Get_Template():
 
 
 
-
 #To deploy instance usage monitor with notifications and automated ebs snapshots
 def Provisions_Stack_Create(instance_data):
     if instance_data['ec2_tags'] == env_variables['specified_tag_value']:
@@ -82,7 +79,11 @@ def Provisions_Stack_Create(instance_data):
                     {
                         'ParameterKey': 'buildid',
                         'ParameterValue': env_variables['buildid']
-                    }
+                    },
+                    {
+                        'ParameterKey': 'tagvalue',
+                        'ParameterValue': instance_data['ec2_tags']
+                    }                    
                 ]
             )
             stack_data = {'tagmatched': True, 'Begin_Ec2_Provisions_Stack': True}
@@ -97,15 +98,39 @@ def Provisions_Stack_Create(instance_data):
         Sns_Notification(instance_data, stack_data)
 
 
-
 def Update_Instances_Object(instance_data):
-
     try:
-        #TODO:update table api
+        response = s3client.get_object(
+            Bucket = 'vmmonitoringsresources-009009',
+            Key = 'Resources/Instance_Ids.json'
         )
-        
+
+        if response['ResponseMetadata']['HTTPStatusCode'] == 200:
+            print('get_object for instance ids successful')
+            print(response)
+            body = response['Body'].read().decode('utf-8')
+            Put_Object(instance_data, body)
+    except ClientError as e:
+        print("Client error: %s" % e)
+
+
+
+def Put_Object(instance_data, instance_list_object):
+    print(instance_list_object)
+    instanceid_dict = json.loads(instance_list_object)
+    instanceid_dict['instanceids'].append(instance_data['instance_id'])
+    instanceid_object = json.dumps(instanceid_dict)
+    try:    
+        response = s3client.put_object(
+            Body = instanceid_object,
+            Bucket = 'vmmonitoringsresources-009009',
+            Key = 'Resources/Instance_Ids.json'
+        )
+        print(response)
+    except ClientError as e:
+        print("Client error: %s" % e)
     
-    
+
 
 
 #Publishes upon any instance launch discovery and sends results of provisions launch if tag is matched; 

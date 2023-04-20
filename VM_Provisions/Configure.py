@@ -41,10 +41,9 @@ def Create_Bucket_Resources(bkt_status):
     if bkt_status != 0:
         objects = [
             'Ec2_Lambda_Monitoring_Provisions/VM_Provisions/template0.yaml',
-            'Ec2_Lambda_Monitoring_Provisions/VM_Provisions/Ebs_Scheduled.py',
-            'Ec2_Lambda_Monitoring_Provisions/VM_Provisions/template2.yaml',
-            'Ec2_Lambda_Monitoring_Provisions/VM_Provisions/SnsEndpoint_LogsUploader.py' ,
-            'Ec2_Lambda_Monitoring_Provisions/VM_Provisions/Resource_Discovery_Endpoint.py' 
+            'Ec2_Lambda_Monitoring_Provisions/VM_Provisions/Resource_Discovery_Endpoint.py', 
+            'Ec2_Lambda_Monitoring_Provisions/VM_Provisions/Ebs_Scheduled.py'
+            'Ec2_Lambda_Monitoring_Provisions/VM_Provisions/Instance_Ids.json'
         ]    
         successes = []
         for x in objects:
@@ -137,53 +136,13 @@ def Main_Event_Stack(cfroles):
                 )
                 if 'StackId' in response:
                     data = response['StackId']
-                    print('EC2 Config event stack success')
+                    print('EC2 Config event stack creation initiated success')
                 else:
                     print('Logs stack for lambda failed to create')
                     data = 0
                 return data
             except ClientError as e:
                 print('Client error: %s' % e)    
-
-
-
-#Launches stack containing logs manager function, event for monitoring lambdas and iam permissions- template1.yaml
-def Diagnostics_Stack(cfroles, upload_status):
-    if upload_status != 0:
-        with open('Ec2_Lambda_Monitoring_Provisions/VM_Provisions/template1.yaml') as templateobj:
-            template = templateobj.read()
-        try:
-            response = cfclient.create_stack(
-                StackName = 'CWLogsUpload'+ buildid,
-                Capabilities = ['CAPABILITY_NAMED_IAM'],
-                TemplateBody = template,
-                RoleARN = cfroles['stacklambdaprovsrole'],
-                Tags = [
-                    {
-                        'Key': 'buildid',
-                        'Value': buildid
-                    }
-                ],
-                Parameters = [
-                    {
-                        'ParameterKey': 'buildid',
-                        'ParameterValue': buildid
-                    },
-                    {
-                        'ParameterKey': 'specifiedtagvalue',
-                        'ParameterValue': tag_value 
-                    }
-                ]
-            )
-            if 'StackId' in response:
-                data = response['StackId']
-                print('launched stack for lambda execution logs')
-            else:
-                print('Provisions stack for lambda failed to create')
-                data = 0
-            return data
-        except ClientError as e:
-            print('Client error: %s' % e)    
 
 
 
@@ -254,7 +213,6 @@ def main():
         b = Create_Bucket_Resources(a)
         c = Get_CF_Permissions(b)
         d = Main_Event_Stack(c)
-        Diagnostics_Stack(c,d)
     elif command == 'cleanup':
         h = Get_Resources_For_Deletion()
         Delete_Cf_Stacks(h)

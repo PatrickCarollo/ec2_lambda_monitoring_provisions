@@ -1,4 +1,4 @@
-#Launches at point of intitial deploy. gets passed the specified tag value of which to deploy 
+#Launches at point of intitial deploy. Passed the specified tag value of which to deploy 
 #provisioning resources to 
 AWSTemplateFormatVersion: 2010-09-09
 Parameters:
@@ -15,7 +15,7 @@ Resources:
     Ec2eventtargetfunction:
         Type: AWS::Lambda::Function
         Properties:
-            FunctionName: 'ec2discendpoint'
+            FunctionName: 'ec2discoverytarget'
             Handler: Resource_Discovery_Endpoint.lambda_handler
             Role: !GetAtt Provisioninglaunchrole.Arn
             Runtime: python3.7
@@ -82,7 +82,21 @@ Resources:
                                 "detailedmonitoring": <monitoring>,    
                                 "volume_data": <volumedata>
                             }
-    
+    #Lambda specific permissions for allowing eventbridge access to invoke function
+    Lambdaeventbridgepermission:
+        Type: AWS::Lambda::Permission
+        Properties: 
+            FunctionName: !Ref Ec2eventtargetfunction
+            Action: 'lambda:InvokeFunction'
+            Principal: events.amazonaws.com
+            SourceArn: !GetAtt Configdiscoveryevent.Arn
+    Lambdaecloudwatchpermission:
+        Type: AWS::Lambda::Permission
+        Properties: 
+            FunctionName: !Ref ScheduledSnapshotFunction
+            Action: 'lambda:InvokeFunction'
+            Principal: events.amazonaws.com
+            SourceArn: !GetAtt ScheduledSnapshotEvent.Arn
     #topic to handle usage notifs and be subscribed to by provision functions
     Snstopic:
         Type: AWS::SNS::Topic
@@ -96,27 +110,120 @@ Resources:
             Endpoint: !Ref personalemail
     
     
-    #Table to store instance ids to run scheduled function on
-    Instanceidstable:
-        Type: AWS::DynamoDB::Table
+    #Table to store instance ids to run scheduled function/replaced by s3 object
+    #Instanceidstable:
+    #    Type: AWS::DynamoDB::Table
+    #    Properties:
+    #        TableName: 'InstanceIDs'
+    #        AttributeDefinitions:
+    #            - AttributeName: 'InstanceIds'
+    #              AttributeType: 'SS'
+    #        KeySchema:
+    #            - AttributeName: 'InstanceIds'
+    #              KeyType: 'HASH'
+    #        ProvisionedThroughput:
+    #            ReadCapacityUnits: 3
+    #            WriteCapacityUnits: 3
+
+    ScheduledSnapshotFunction:
+        Type: AWS::Lambda::Function
         Properties:
-            TableName: 'InstanceIDs'
-            AttributeDefinitions:
-                - AttributeName: 'InstanceIds'
-                  AttributeType: 'S'
-            KeySchema:
-                - AttributeName: 'InstanceIds'
-                  KeyType: 'HASH'
-            ProvisionedThroughput:
-                ReadCapacityUnits: 3
-                WriteCapacityUnits: 3
+            Role: !GetAtt Ebsfunctionrole.Arn
+            Runtime: python3.7
+            Handler: 'Ebs_Scheduled.lambda_handler'
+            Environment:
+                Variables:
+                    topicarn: !GetAtt Snstopic.TopicArn
+            Code:
+                S3Bucket: !Sub 'vmmonitoringsresources-${buildid}'
+                S3Key: 'Resources/Ebs_Scheduled.zip'
+            Tags:
+                -   Key: 'invocation'
+                    Value: 'event'  
+                -   Key: 'buildid'
+                    Value: buildid    
+
+    ScheduledSnapshotEvent:
+        Type: AWS::Events::Rule
+        Properties:
+            RoleArn: !GetAtt Ebseventrole.Arn
+            Name: !Join
+                - ''
+                -   - 'ScheduledSnapshots'
+                    - !Ref buildid 
+            ScheduleExpression: rate(15 minutes) #rate for testing
+            Targets:  
+                -   Id: 'snapshotfuntiontarget'
+                    Arn: !GetAtt ScheduledSnapshotFunction.Arn    
+
+    Ebsfunctionrole:
+        Type: AWS::IAM::Role
+        Properties:
+            RoleName: !Join
+                - ''
+                -   - 'Scheduledsnapshotsfuncrole'
+                    - !Ref buildid
+            AssumeRolePolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                    -   Effect: Allow
+                        Principal:
+                            Service: lambda.amazonaws.com
+                        Action: 'sts:AssumeRole'
+            Policies:
+                -   PolicyName: root                    
+                    PolicyDocument:
+                        Version: "2012-10-17"
+                        Statement: 
+                            -   Effect: Allow
+                                Action:                 
+                                    - 'logs:CreateLogGroup'
+                                    - 'logs:CreateLogStream'
+                                    - 'logs:PutLogEvents'
+                                Resource: '*'           
+                            -   Effect: Allow
+                                Action: 
+                                    - 'ebs:CompleteSnapshot'
+                                    - 'ebs:StartSnapshot'
+                                Resource: '*'
+                            -   Effect: Allow
+                                Action: 'sns:publish'
+                                Resource: !GetAtt Snstopic.TopicArn
+                            -   Effect: Allow
+                                Action: 
+                                    - 'ec2:StartInstances'
+                                    - 'ec2:StopInstances'
+                                Resource: '*'
+    Ebseventrole:
+        Type: AWS::IAM::Role
+        Properties:
+            RoleName: !Join
+                - ''
+                -   - 'Eventroleebssnap'
+                    - !Ref buildid
+            AssumeRolePolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                    -   Effect: Allow
+                        Principal:
+                            Service: events.amazonaws.com
+                        Action: 'sts:AssumeRole'
+            Policies:
+                -   PolicyName: root                    
+                    PolicyDocument:
+                        Version: "2012-10-17"
+                        Statement:
+                            -   Effect: Allow
+                                Action:
+                                    - 'lambda:InvokeFunction'
+                                Resource: !GetAtt ScheduledSnapshotFunction.Arn
+
     
-    
-    #Assumed used by ec2 provisions function
+    #Assumed used by ec2 discovery target function
     Provisioninglaunchrole:
         Type: AWS::IAM::Role
         Properties:    
-            RoleName: 'provisionslaunchrole'
+            RoleName: 'Ec2eventendpointlambdahrole'
             AssumeRolePolicyDocument:
                 Version: "2012-10-17"
                 Statement:
@@ -154,6 +261,14 @@ Resources:
                             -   Effect: Allow
                                 Action: 's3:GetObject'
                                 Resource: !Sub 'arn:aws:s3:::vmmonitoringsresources-${buildid}/Resources/*'
+                            -   Effect: Allow
+                                Action: 
+                                    - 'dynamodb:UpdateTable'
+                                    - 'dynamodb:UpdateItem'
+                                    - 'dynamodb:PutItem'
+                                Resource: !GetAtt Instanceidstable.Arn                            
+    
+    
     #to be used by event rule&target
     Configeventrole:
         Type: AWS::IAM::Role
@@ -179,6 +294,7 @@ Resources:
                             -   Effect: Allow
                                 Action: 'lambda:InvokeFunction'
                                 Resource: !GetAtt Ec2eventtargetfunction.Arn
+    
     #to be used for monitoring stack creation
     Cloudformationec2provisionsrole:
         Type: AWS::IAM::Role
@@ -207,38 +323,6 @@ Resources:
                             -   Effect: Allow
                                 Action: 's3:GetObject'
                                 Resource: !Sub 'arn:aws:s3:::vmmonitoringsresources-${buildid}/Resources/*'
-                            -   Effect: Allow
-                                Action: 
-                                    - 'lambda:CreateFunction'
-                                    - 'lambda:DeleteFunction'
-                                    - 'lambda:TagResource'
-                                    - 'lambda:GetFunction'
-                                Resource: '*'
-                            -   Effect: Allow
-                                Action: 
-                                    - 'events:PutEvents'
-                                    - 'events:DeleteEvents'
-                                    - 'events:PutRule'
-                                    - 'events:EnableRule'
-                                    - 'events:DescribeRule'
-                                    - 'events:RemoveTargets'
-                                    - 'events:PutTargets'
-                                    - 'events:DeleteRule'
-                                Resource: '*'
-                            -   Effect: Allow
-                                Action: 
-                                    - 'iam:CreateRole'
-                                    - 'iam:UpdateRole'
-                                    - 'iam:GetRole'
-                                    - 'iam:DeleteRole'
-                                    - 'iam:PutRolePolicy'
-                                    - 'iam:DetachRolePolicy'
-                                    - 'iam:DeleteRolePolicy'
-                                    - 'iam:AttachRolePolicy'
-                                    - 'iam:PassRole'
-                                    - 'iam:CreateServiceLinkedRole'
-                                Resource: '*'
-
 
 
 

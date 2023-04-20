@@ -5,7 +5,7 @@ CLI COMMANDS FOR INITIAL CLOUDFORMATION STACKS' IAM Roles
 
 Create roles:
 
-1a.
+1a.(For Ec2 Monitoring Events)
 aws iam create-role --role-name stackeventec2provsrole --assume-role-policy-document '{
     "Version": "2012-10-17",
     "Statement": [
@@ -19,7 +19,7 @@ aws iam create-role --role-name stackeventec2provsrole --assume-role-policy-docu
     ]
 }'
 
-2a.
+2a.(For Lambda Monitoring Events)
 aws iam create-role --role-name stacklambdaprovsrole --assume-role-policy-document '{
     "Version": "2012-10-17",
     "Statement": [
@@ -37,39 +37,78 @@ aws iam create-role --role-name stacklambdaprovsrole --assume-role-policy-docume
 
 Add policies:
 
-1b.
+1b.(For Ec2 Monitoring Events)
 aws iam put-role-policy --role-name stackeventec2provsrole --policy-name stackeventec2provspolicy --policy-document '{
     "Version": "2012-10-17",
     "Statement": [
         {
             "Effect": "Allow",
-            "Action": "lambda:*",
+            "Action": [
+                "lambda:CreateFunction",
+                "lambda:DeleteFunction",
+                "lambda:GetFunction",
+                "lambda:PublishVersion",
+                "lambda:TagResource"
+                "lambda:AddPermission",
+                "lambda:RemovePermission"
+            ],
             "Resource": "*"
         },
         {
             "Effect": "Allow",
-            "Action": "events:*",
+            "Action": [
+                "events:PutRule",
+                "events:DeleteRule",
+                "events:PutEvents",
+                "events:CreateEventBus",
+                "events:CreateEndpoint",
+                "events:DeleteEventBus",
+                "events:DeleteEndpoint",
+                "events:DescribeRule",
+                "events:PutTargets",
+                "events:RemoveTargets"
+            ],         
+           "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "sns:DeleteTopic",
+                "sns:CreateTopic",
+                "sns:Publish",
+                "sns:ConfirmSubscription",
+                "sns:Subscribe",
+                "sns:DeleteEndpoint",
+                "sns:SetSubscriptionAttributes",
+                "sns:Unsubscribe",
+                "sns:GetTopicAttributes"
+            ],
             "Resource": "*"
         },
         {
             "Effect": "Allow",
-            "Action": "sns:*",
+            "Action": [
+                "s3:PutObject",
+                "s3:GetObject",
+                "s3:DeleteObject"
+            ],
             "Resource": "*"
         },
-        {
+        {    
             "Effect": "Allow",
-            "Action": "s3:*",
+            "Action": [
+                "iam:CreateRole",
+                "iam:UpdateRole",
+                "iam:GetRole",
+                "iam:DeleteRole",
+                "iam:PutRolePolicy",
+                "iam:DetachRolePolicy",
+                "iam:DeleteRolePolicy",
+                "iam:AttachRolePolicy",
+                "iam:PassRole"
+            ],
             "Resource": "*"
-        },
-        {    "Effect": "Allow",
-            "Action": "iam:*",
-            "Resource": "*"
-        },
-        {    "Effect": "Allow",
-            "Action": "dynamodb:*",
-            "Resource": "*"
-        }    
-    
+        }
     ]
 }'
 
