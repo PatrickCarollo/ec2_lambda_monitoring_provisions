@@ -72,7 +72,7 @@ Resources:
                             "instancetype": "$.detail.configurationItem.configuration.instanceType"
                             "image": "$.detail.configurationItem.configuration.imageid"
                             "monitoring": "$.detail.configurationItem.configuration.monitoring.state"
-                            "volumedata": "$.detail.configurationItem.relationships"
+                            "configuration": "$.detail.configurationItem.relationships"
                         InputTemplate: |
                             {
                                 "instance_id": <instanceid>,
@@ -80,7 +80,7 @@ Resources:
                                 "instance_type": <instancetype>,
                                 "image_id": <image>,
                                 "detailedmonitoring": <monitoring>,    
-                                "volume_data": <volumedata>
+                                "configuration_details": <configuration>
                             }
     #Lambda specific permissions for allowing eventbridge access to invoke function
     Lambdaeventbridgepermission:
@@ -105,7 +105,7 @@ Resources:
     Subscribeemail:
         Type: AWS::SNS::Subscription
         Properties: 
-            Protocol: email-json
+            Protocol: email
             TopicArn: !Ref Snstopic
             Endpoint: !Ref personalemail
     
@@ -259,7 +259,9 @@ Resources:
                                 Action: 'iam:PassRole'
                                 Resource: !GetAtt Cloudformationec2provisionsrole.Arn
                             -   Effect: Allow
-                                Action: 's3:GetObject'
+                                Action: 
+                                - 's3:GetObject'
+                                - 's3:PutObject'
                                 Resource: !Sub 'arn:aws:s3:::vmmonitoringsresources-${buildid}/Resources/*'
                             -   Effect: Allow
                                 Action: 

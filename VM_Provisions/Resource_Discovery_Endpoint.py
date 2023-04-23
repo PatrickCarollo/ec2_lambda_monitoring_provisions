@@ -12,9 +12,8 @@ s3client = boto3.client('s3')
 env_variables = os.environ
 
 
-#Gets details on instance discovered
+#event as input from EventBridge trigger- details of instance discovered
 def lambda_handler(event, context):
-    print(event)
     try:
         instance_data = {}
         instance_data['instance_id'] = event['instance_id']
@@ -22,16 +21,28 @@ def lambda_handler(event, context):
         instance_data['instance_type'] = event['instance_type']
         instance_data['image_id'] = event['image_id']
         instance_data['detailedmonitoring'] = event['detailedmonitoring']
-        instance_data['volume_data'] = event['volume_data']
-        
-        Provisions_Stack_Create(instance_data)
+        instance_data['configuration_details'] = event['configuration_details']
     except:
-        stack_status = 'null'
-        instance_data = 'failed to parse instanced data from event'
-        Sns_Notification(instance_data, stack_status)        
-        
+        instance_data = 'failed to parse instance data from event'
+        status = {}
+        status['UtilAlarmDeploy'] = 'null'
+        status['UpdateIDsList'] = 'null'
+        Sns_Notification(instance_data, status)  
+    print(event)
+    if instance_data['ec2_tags']['Environment'] == env_variables['specified_tag_value']:
+        print('tagmatch')
+        instance_data['TagMatched'] = True
+        Provisions_Stack_Create(instance_data)
+    else:
+        instance_data['TagMatched'] = False
+        status = {}
+        status['UtilAlarmDeploy'] = 'null'
+        status['UpdateIDsList'] = 'null'
+        Sns_Notification(instance_data, status)
 
-def Get_Template():
+
+#Gets template for monitoring services; a cpu util alarm 
+def Get_Template(instance_data):
     try:
         object_data = env_variables['bucketkey']
         ind = object_data.find('/')
@@ -43,19 +54,26 @@ def Get_Template():
             Key = key
         )
         data = response['Body'].read().decode('utf-8')
+        print('Retrieved s3 template object for util. alarm setup')
         return data
     except ClientError as e:
         print("Client error: %s" % e)
-        stack_status = 'null'
-        Sns_Notification(data, stack_status) 
+        status = {}
+        status['UtilAlarmDeploy'] = 'null'
+        status['UpdateIDsList'] = 'null'
+        Sns_Notification(instance_data, status) 
 
 
 
 #To deploy instance usage monitor with notifications and automated ebs snapshots
 def Provisions_Stack_Create(instance_data):
-    if instance_data['ec2_tags'] == env_variables['specified_tag_value']:
-        object_body = Get_Template()
+    object_body = Get_Template(instance_data)
+    if instance_data['detailedmonitoring'] == 'enabled':
         try:
+            for x in instance_data['configuration_details']:
+                if x['resourceType'] == 'AWS::EC2::Volume':
+                    global volumeid
+                    volumeid = x['resourceId']
             response = cfclient.create_stack(
                 StackName = 'Ec2Provisions' + env_variables['buildid'] ,
                 Capabilities = ['CAPABILITY_NAMED_IAM'],
@@ -70,7 +88,7 @@ def Provisions_Stack_Create(instance_data):
                 Parameters = [
                     {
                         'ParameterKey': 'volumeid',
-                        'ParameterValue': instance_data['volume_data']
+                        'ParameterValue': volumeid
                     },
                     {
                         'ParameterKey': 'instanceid',
@@ -82,66 +100,76 @@ def Provisions_Stack_Create(instance_data):
                     },
                     {
                         'ParameterKey': 'tagvalue',
-                        'ParameterValue': instance_data['ec2_tags']
+                        'ParameterValue': instance_data['ec2_tags']['Environment']
                     }                    
                 ]
             )
-            stack_data = {'tagmatched': True, 'Begin_Ec2_Provisions_Stack': True}
-            Sns_Notification(instance_data, stack_data)
-            Update_Instances_Object(instance_data)
         except ClientError as e:
             print("Client error: %s" % e)
-            stack_data = {'tagmatched': True, 'Begin_Ec2_Provisions_Stack': False}
-            Sns_Notification(instance_data, stack_data)
+            status = {}
+            status['UtilAlarmDeploy'] = 'failed'
+            status['UpdateIDsList'] = 'null'
+            Sns_Notification(instance_data, status)
+        status = {}
+        status['UtilAlarmDeploy'] = 'success'
+        Get_Instances_Object(instance_data, status)
+        status['UpdateIDsList'] = 'success'
+        Sns_Notification(instance_data, status)
     else:
-        stack_data = {'tagmatched': False}
-        Sns_Notification(instance_data, stack_data)
+        print('Instance not being monitored')
+        status = {}
+        status['UtilAlarmDeploy'] = 'failed- monitoring not enabled'
+        status['UpdateIDsList'] = 'null'
+        Sns_Notification(instance_data, status)
+        
 
-
-def Update_Instances_Object(instance_data):
+#Gets json list object from s3 containing instance ids to run scheduled logic upon
+def Get_Instances_Object(instance_data, status):
     try:
         response = s3client.get_object(
             Bucket = 'vmmonitoringsresources-009009',
             Key = 'Resources/Instance_Ids.json'
         )
-
-        if response['ResponseMetadata']['HTTPStatusCode'] == 200:
-            print('get_object for instance ids successful')
-            print(response)
-            body = response['Body'].read().decode('utf-8')
-            Put_Object(instance_data, body)
+        print('get_object for instance ids successful')
+        body = response['Body'].read().decode('utf-8')
+        Put_Object(instance_data, body, status)
     except ClientError as e:
         print("Client error: %s" % e)
+        status = {}
+        status['UpdateIDsList'] = 'failed'
+        Sns_Notification(instance_data, status)        
 
 
-
-def Put_Object(instance_data, instance_list_object):
-    print(instance_list_object)
-    instanceid_dict = json.loads(instance_list_object)
-    instanceid_dict['instanceids'].append(instance_data['instance_id'])
-    instanceid_object = json.dumps(instanceid_dict)
+#Adds new instance details to list and uploads to s3
+def Put_Object(instance_data, instance_list_object, status):
+    new_ids = {}
+    new_ids['instanceid'] = instance_data['instance_id']
+    new_ids['volumeid'] = volumeid
+    existing_instanceid_list = json.loads(instance_list_object)
+    existing_instanceid_list['instanceids'].append(new_ids)
+    print(existing_instanceid_list)
+    instanceid_object = json.dumps(existing_instanceid_list)
     try:    
         response = s3client.put_object(
             Body = instanceid_object,
             Bucket = 'vmmonitoringsresources-009009',
             Key = 'Resources/Instance_Ids.json'
         )
-        print(response)
+        print('Updated list for instanceids at: '+ 'Resources/Instance_Ids.json')
     except ClientError as e:
         print("Client error: %s" % e)
-    
+        status['UpdateIDsList'] = 'failed'
+        Sns_Notification(instance_data, status)        
 
 
 
 #Publishes upon any instance launch discovery and sends results of provisions launch if tag is matched; 
 #if not, it sends null and instance id
-def Sns_Notification(instance_data, stack_status):
+def Sns_Notification(instance_data, status):
     try:
         message_data = {}
-        Ec2_Discovery_Details = {}
-        Ec2_Discovery_Details['Discovered_Instance_Details'] = instance_data
-        Ec2_Discovery_Details['MonitoringservicesdeployStatus'] = stack_status
-        message_data['Ec2_Discovery_Details'] = Ec2_Discovery_Details
+        message_data['Ec2_Discovery_Details'] = instance_data
+        message_data['Ec2_Monitoring_Provision'] = status
         message_data['Function_Name'] = 'Resource_Discovery_Endpoint'
         message_data['buildid'] = env_variables['buildid']
         

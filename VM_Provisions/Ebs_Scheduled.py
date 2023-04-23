@@ -11,7 +11,7 @@ snsclient = boto3.client('sns')
 
 
 
-#
+#TODO: create loop functionality
 def lambda_handler(event, context):
     global event
     event = event
