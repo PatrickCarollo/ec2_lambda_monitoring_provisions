@@ -8,66 +8,90 @@ from botocore.exceptions import ClientError
 
 ec2client = boto3.client('ec2')
 snsclient = boto3.client('sns')
-
+s3client = boto3.client('s3')
 
 
 #TODO: create loop functionality
 def lambda_handler(event, context):
-    global event
-    event = event
+
     global variables
-    variables = os.environ
+    
+    variables = {'buildid': '009009'}
+    a = Get_List()
+    instances_data_list = json.loads(a)
+    #begin running logic on instance list data
+    for x in instances_data_list['instanceids']:
+        Stop_Instance(x['instanceid'])
+
+        snapshot_state = Create_Snapshot(x['volumeid'])
+        start_status = Start_Instance(x['instanceid'])
+        #TODO: create response object to SNS
+    
+    Sns_Notification(instances_data_list,snapshot_state, start_status)
+        
+
+def Create_Snapshot(volumeid):
     try:
-        instance_status = Stop_Instance()
-        if instance_status == 'stopped':
-            response = ec2client.create_snapshot(
-                VolumeId = variables['volumeid']
-            )    
-            time.sleep(10)   
-            data = response['State'] 
-            if data == 'pending' or data == 'completed':
-                Start_Instance(data)
+        response = ec2client.create_snapshot(
+            VolumeId = volumeid
+        )    
+        state = response['State'] 
+        return response['state']
+    except ClientError as e:
+        print('Client error: %s' % e)
+
+
+def Get_List():
+    response = s3client.get_object(
+        Bucket = 'vmmonitoringsresources-009009',
+        Key = 'Resources/Instance_Ids.json'
+    )
+    print('get_object for instance ids successful')
+    body = response['Body'].read().decode('utf-8')
+    print(body)
+    return body
+    
+
+def Stop_Instance(instanceids):
+    try:
+        while True:
+            response = ec2client.stop_instances(
+                InstanceIds = [instanceids]
+            )
+            status = response['StoppingInstances'][0]['CurrentState']['Name']
+            if status != 'stopped':
+                print(response)
+                time.sleep(12)
             else:
-                Sns_Notification(instance_status, response['State'] )
-        else:
-            time.sleep(10)
-            Stop_Instance()    
-    except ClientError as e:
-        print('Client error: %s' % e)
+                print(response)
+                break
         
-
-        
-def Stop_Instance():
-    try:
-        response = ec2client.stop_instances(
-            InstanceIds = [event['instanceid']]
-        )
-        status = response['StoppingInstances'][0]['CurrentState']['Name']
-        return status
     except ClientError as e:
         print('Client error: %s' % e)
 
 
 
-def Start_Instance(snapshot_status):
+def Start_Instance(instanceids):
+    
     try:
-        
         response = ec2client.start_instances(
-            InstanceIds = [
-            event['instanceid']
-            ] 
+            InstanceIds = [instanceids['instanceid']]
         )
-        status = response['StartingInstances'][0]['CurrentState']['Name']
-        Sns_Notification(snapshot_status, status)
+        if response['ResponseMetadata']['HTTPStatusCode'] == 200:
+            status = response['StartingInstances'][0]['CurrentState']['Name']
+            return status
+        
+            
+        
     except ClientError as e:
         print('Client error: %s' % e)
 
 
 
-def Sns_Notification(snapshot_status, serverstart_status):
+def Sns_Notification(instance_data,snapshot_status, serverstart_status):
     message_data = {}
     Status = {}
-    Status['VolumeId'] = variables['volumeid']
+    Status['EC2_Ids'] = instance_data
     Status['ScheduledSnapshotDeploymentState'] = snapshot_status
     Status['Instance_State'] = serverstart_status
     message_data['Status'] = Status
@@ -76,10 +100,12 @@ def Sns_Notification(snapshot_status, serverstart_status):
 
     try:
         response = snsclient.publish(
-            TopicArn = variables['topicarn'], 
+            TopicArn = 'arn:aws:sns:us-east-1:143865003029:VmMonitoring', 
             Message = json.dumps(message_data)        
         )
+        print(message_data)
     except ClientError as e:
         print('Client error: %s' % e)
 
 
+lambda_handler('event', 'context')

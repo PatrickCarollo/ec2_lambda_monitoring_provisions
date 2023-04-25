@@ -6,7 +6,7 @@ CLI COMMANDS FOR INITIAL CLOUDFORMATION STACKS' IAM Roles
 Create roles:
 
 1a.(For Ec2 Monitoring Events)
-aws iam create-role --role-name stackeventec2provsrole --assume-role-policy-document '{
+aws iam create-role --role-name stackeventec2provsrole  --tags Key=build,Value=Development --assume-role-policy-document '{
     "Version": "2012-10-17",
     "Statement": [
         {   

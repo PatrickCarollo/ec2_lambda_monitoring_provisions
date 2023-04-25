@@ -119,6 +119,12 @@ def Main_Event_Stack(cfroles):
                     Capabilities = ['CAPABILITY_NAMED_IAM'],
                     RoleARN = cfroles['stackeventec2provsrole'],
                     TemplateBody = template,
+                    Tags = [
+                        {
+                            'Key': 'buildid',
+                            'Value': buildid
+                        },
+                    ],
                     Parameters = [
                         {
                             'ParameterKey': 'buildid',
@@ -134,6 +140,7 @@ def Main_Event_Stack(cfroles):
                         }
                     ]
                 )
+                
                 if 'StackId' in response:
                     data = response['StackId']
                     print('EC2 Config event stack creation initiated success')
@@ -159,7 +166,7 @@ def Get_Resources_For_Deletion():
                 TagFilters = [
                     {
                         'Key': 'buildid',
-                            'Values': [ buildid_tag_val]
+                            'Values': [buildid_tag_val]
                     }
                 ]
             )
@@ -184,7 +191,7 @@ def Delete_Cf_Stacks(resources):
                     StackName = stack_name,
                 )
                 if response['ResponseMetadata']['HTTPStatusCode'] == 200:
-                    print('Stack resource successfully deleted')
+                    print('Stack resource successfully deleted: '+ stack_name)
             except ClientError as e:
                 print('Client error: %s' % e)        
 
@@ -192,15 +199,17 @@ def Delete_Cf_Stacks(resources):
 
 #slices out identifiers and deletes
 def Delete_Cf_Roles(resources):
-    for x in resources['iam:role']['ResourceTagMappingList']:
-        data = x['ResourceARN']
-        role_name = data[data.index('/')+1:]
+    role_names = [
+        'stacklambdaprovsrole',
+        'stackeventec2provsrole'
+    ]
+    for x in role_names:
         try:
             response = iamclient.delete_role(
-                RoleName = role_name
+                RoleName = x
             )
             if response['ResponseMetadata']['HTTPStatusCode'] == 200:
-                print('iam roles successfully deleted')
+                print('iam role successfully deleted:'+ x)
         except ClientError as e:
             print('Client error: %s' % e)        
 

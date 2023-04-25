@@ -108,22 +108,7 @@ Resources:
             Protocol: email
             TopicArn: !Ref Snstopic
             Endpoint: !Ref personalemail
-    
-    
-    #Table to store instance ids to run scheduled function/replaced by s3 object
-    #Instanceidstable:
-    #    Type: AWS::DynamoDB::Table
-    #    Properties:
-    #        TableName: 'InstanceIDs'
-    #        AttributeDefinitions:
-    #            - AttributeName: 'InstanceIds'
-    #              AttributeType: 'SS'
-    #        KeySchema:
-    #            - AttributeName: 'InstanceIds'
-    #              KeyType: 'HASH'
-    #        ProvisionedThroughput:
-    #            ReadCapacityUnits: 3
-    #            WriteCapacityUnits: 3
+            
 
     ScheduledSnapshotFunction:
         Type: AWS::Lambda::Function
@@ -194,6 +179,11 @@ Resources:
                                     - 'ec2:StartInstances'
                                     - 'ec2:StopInstances'
                                 Resource: '*'
+                            -   Effect: Allow
+                                Action: 
+                                - 's3:GetObject'
+                                Resource: !Sub 'arn:aws:s3:::vmmonitoringsresources-${buildid}/Resources/*'    
+    
     Ebseventrole:
         Type: AWS::IAM::Role
         Properties:
@@ -271,7 +261,7 @@ Resources:
                                 Resource: !GetAtt Instanceidstable.Arn                            
     
     
-    #to be used by event rule&target
+    #to be used by event rule
     Configeventrole:
         Type: AWS::IAM::Role
         Properties:    
@@ -322,9 +312,7 @@ Resources:
                                     - 'cloudwatch:DescribeAlarms'
                                     - 'cloudwatch:DeleteAlarms'
                                 Resource: '*'                 
-                            -   Effect: Allow
-                                Action: 's3:GetObject'
-                                Resource: !Sub 'arn:aws:s3:::vmmonitoringsresources-${buildid}/Resources/*'
+
 
 
 
