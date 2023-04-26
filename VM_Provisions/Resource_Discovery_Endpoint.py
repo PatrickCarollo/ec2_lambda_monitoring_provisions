@@ -75,7 +75,7 @@ def Provisions_Stack_Create(instance_data):
                     global volumeid
                     volumeid = x['resourceId']
             response = cfclient.create_stack(
-                StackName = 'Ec2Provisions' + env_variables['buildid'] ,
+                StackName = 'Ec2Provisions' + env_variables['buildid'] + instance_data['instance_id'],
                 Capabilities = ['CAPABILITY_NAMED_IAM'],
                 RoleARN = env_variables['cfrole'],
                 TemplateBody = object_body,

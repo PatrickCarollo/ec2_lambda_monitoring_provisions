@@ -1,4 +1,4 @@
-#Function created as target of event that is launched upon ec2 tag match. Runs on a schedule
+#Function created as target of event that is launched upon ec2 tag match. Runs on an EventB schedule
 #send its results to sns topic
 import boto3
 import json
@@ -15,19 +15,22 @@ s3client = boto3.client('s3')
 def lambda_handler(event, context):
 
     global variables
-    
-    variables = {'buildid': '009009'}
+    variables = os.environ
     a = Get_List()
     instances_data_list = json.loads(a)
     #begin running logic on instance list data
+    response_object = []
     for x in instances_data_list['instanceids']:
         Stop_Instance(x['instanceid'])
 
         snapshot_state = Create_Snapshot(x['volumeid'])
         start_status = Start_Instance(x['instanceid'])
-        #TODO: create response object to SNS
-    
-    Sns_Notification(instances_data_list,snapshot_state, start_status)
+        stati = {}
+        stati['instance'] = x['instanceid']
+        stati['snapshotstatus'] = snapshot_state
+        stati['startinstansestatus'] = start_status
+        response_object.append(stati)
+    Sns_Notification(instances_data_list, response_object)
         
 
 def Create_Snapshot(volumeid):
@@ -36,7 +39,8 @@ def Create_Snapshot(volumeid):
             VolumeId = volumeid
         )    
         state = response['State'] 
-        return response['state']
+        print(state)
+        return state
     except ClientError as e:
         print('Client error: %s' % e)
 
@@ -61,11 +65,10 @@ def Stop_Instance(instanceids):
             status = response['StoppingInstances'][0]['CurrentState']['Name']
             if status != 'stopped':
                 print(response)
-                time.sleep(12)
+                time.sleep(16)
             else:
                 print(response)
                 break
-        
     except ClientError as e:
         print('Client error: %s' % e)
 
@@ -75,26 +78,20 @@ def Start_Instance(instanceids):
     
     try:
         response = ec2client.start_instances(
-            InstanceIds = [instanceids['instanceid']]
+            InstanceIds = [instanceids]
         )
         if response['ResponseMetadata']['HTTPStatusCode'] == 200:
             status = response['StartingInstances'][0]['CurrentState']['Name']
             return status
-        
-            
-        
     except ClientError as e:
         print('Client error: %s' % e)
 
 
 
-def Sns_Notification(instance_data,snapshot_status, serverstart_status):
+def Sns_Notification(instance_data,status):
+    print(status)
     message_data = {}
-    Status = {}
-    Status['EC2_Ids'] = instance_data
-    Status['ScheduledSnapshotDeploymentState'] = snapshot_status
-    Status['Instance_State'] = serverstart_status
-    message_data['Status'] = Status
+    message_data['Status'] = status
     message_data['buildid'] = variables['buildid']
     message_data['function_name'] = 'Ebs_Scheduled'
 
@@ -106,6 +103,3 @@ def Sns_Notification(instance_data,snapshot_status, serverstart_status):
         print(message_data)
     except ClientError as e:
         print('Client error: %s' % e)
-
-
-lambda_handler('event', 'context')

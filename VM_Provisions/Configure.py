@@ -40,10 +40,10 @@ def Bucket_Create():
 def Create_Bucket_Resources(bkt_status):
     if bkt_status != 0:
         objects = [
-            'Ec2_Lambda_Monitoring_Provisions/VM_Provisions/template0.yaml',
-            'Ec2_Lambda_Monitoring_Provisions/VM_Provisions/Resource_Discovery_Endpoint.py', 
-            'Ec2_Lambda_Monitoring_Provisions/VM_Provisions/Ebs_Scheduled.py'
-            'Ec2_Lambda_Monitoring_Provisions/VM_Provisions/Instance_Ids.json'
+            'ec2_monitoring_provisions/VM_Provisions/template0.yaml',
+            'ec2_monitoring_provisions/VM_Provisions/Resource_Discovery_Endpoint.py', 
+            'ec2_monitoring_provisions/VM_Provisions/Ebs_Scheduled.py',
+            'ec2_monitoring_provisions/VM_Provisions/Instance_Ids.json'
         ]    
         successes = []
         for x in objects:
@@ -108,7 +108,7 @@ def Get_CF_Permissions(upload_status):
 #Stack containing Ec2 discovery Event with Config service -template3.yaml
 def Main_Event_Stack(cfroles):
     if cfroles != 0:   
-        with open('Ec2_Lambda_Monitoring_Provisions/VM_Provisions/template3.yaml') as obj:
+        with open('ec2_monitoring_provisions/VM_Provisions/template3.yaml') as obj:
             template = obj.read()
         email = input('Enter email to recieve instance notifications at: ').strip()  
         confirmed_email = input('"' + email + '"?: y/n: ').strip()

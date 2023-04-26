@@ -35,7 +35,6 @@ Resources:
                     specified_tag_value: !Ref specifiedtagvalue
                     cfrole: !GetAtt Cloudformationec2provisionsrole.Arn
                     buildid: !Ref buildid
-                    tablename: !Ref Instanceidstable
                     topicarn: !Ref Snstopic
                     bucketkey: !Join
                         -   ''
@@ -253,12 +252,6 @@ Resources:
                                 - 's3:GetObject'
                                 - 's3:PutObject'
                                 Resource: !Sub 'arn:aws:s3:::vmmonitoringsresources-${buildid}/Resources/*'
-                            -   Effect: Allow
-                                Action: 
-                                    - 'dynamodb:UpdateTable'
-                                    - 'dynamodb:UpdateItem'
-                                    - 'dynamodb:PutItem'
-                                Resource: !GetAtt Instanceidstable.Arn                            
     
     
     #to be used by event rule
