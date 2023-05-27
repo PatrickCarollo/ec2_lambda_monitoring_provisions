@@ -1,2 +1,1 @@
-#Test resources deploy consisting of: test ec2 instance to be monitored, in addition to the template provisions launched;
-#new lambda function for recieving execution data, and new lambda function for use of instance event target.
+#TODO: Test resources deploy consisting of: test ec2 instance to be monitored

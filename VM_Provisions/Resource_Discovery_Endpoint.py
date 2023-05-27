@@ -1,4 +1,4 @@
-#Runs upon ec2 discovery config event, passed instance id as event input and other variables as environment.
+#Runs upon ec2 discovery config event, passed instance id as event input and other variables as environmentv.
 #Created in initial launch
 import boto3
 import json

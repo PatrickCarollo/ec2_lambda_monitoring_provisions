@@ -15,7 +15,7 @@ Resources:
     Ec2eventtargetfunction:
         Type: AWS::Lambda::Function
         Properties:
-            FunctionName: 'ec2discoverytarget'
+            FunctionName: !Sub 'ec2discoverytarget${buildid}'
             Handler: Resource_Discovery_Endpoint.lambda_handler
             Role: !GetAtt Provisioninglaunchrole.Arn
             Runtime: python3.7
@@ -41,11 +41,11 @@ Resources:
                         -   - 'vmmonitoringsresources-'
                             - !Ref buildid
                             - '/Resources/template0.yaml'
-    #Event for ec2 launch discovery config event with a lambda function target 
+    #Event for ec2 launch discovery config event with the lambda function as target 
     Configdiscoveryevent:
         Type: AWS::Events::Rule
         Properties:
-            Name: 'Configec2discoveryevent'
+            Name: !Sub 'Configec2discoveryevent${buildid}'
             RoleArn: !GetAtt Configeventrole.Arn
             EventPattern:   
                 source: 
@@ -89,7 +89,7 @@ Resources:
             Action: 'lambda:InvokeFunction'
             Principal: events.amazonaws.com
             SourceArn: !GetAtt Configdiscoveryevent.Arn
-    Lambdaecloudwatchpermission:
+    Lambdacloudwatchpermission:
         Type: AWS::Lambda::Permission
         Properties: 
             FunctionName: !Ref ScheduledSnapshotFunction

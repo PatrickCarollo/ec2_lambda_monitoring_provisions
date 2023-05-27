@@ -24,6 +24,7 @@ def Set_Variables():
     global confirm
     confirm = input('"' + tag_value + '"? y/n: ')
     
+
 def Bucket_Create():
     #Creates bucket for template sources and upload destination for CW lambda logs
     try:

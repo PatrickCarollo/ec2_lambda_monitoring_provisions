@@ -1,7 +1,11 @@
 #Ec2_Lambda_Monitoring_Provisions
 
 Outline:
-    The finished repository's goal will be to provide a conditional script to launch separate monitoring stacks
-    defined as CloudFormation templates containing respective monitoring/tracing for Lambda Functions and Ec2 Instances. These stacks will 
-    set up automated compute service discovery for monitoring provisions setup with event response.
+    Provides script "Configure.py" used to deploy event infrastructure for automatically launching ec2 monitoring provisions.
+    
+    
+    Setup:
+    1. Reference IAM_CLI.txt for "stacklambdaprovsrole" creation, run 1a and 1b.
+    2. Run Configure.py and enter follow desired inputs.
+    3. Test functionality in console to verify or run "Test_Resources_Launch.py".
 
