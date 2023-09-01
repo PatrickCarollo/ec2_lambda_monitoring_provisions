@@ -1,4 +1,4 @@
-#Ec2_Lambda_Monitoring_Provisions
+# Ec2_Lambda_Monitoring_Provisions
 
 Outline:
     Provides script "Configure.py" used to deploy event infrastructure for automatically launching ec2 monitoring provisions.
