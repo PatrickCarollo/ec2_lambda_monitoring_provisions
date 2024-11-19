@@ -19,7 +19,7 @@ Resources:
                 -   Name: 'InstanceId'
                     Value: !Ref instanceid
             MetricName: CPUUtilization
-            Threshold: 5 #set for testing purposes
+            Threshold: 5 #set for testing purposes, this is the CPU utilization threshold that will trigger a VM reboot
             Statistic:  Average
             ComparisonOperator: GreaterThanOrEqualToThreshold
             Period: 180

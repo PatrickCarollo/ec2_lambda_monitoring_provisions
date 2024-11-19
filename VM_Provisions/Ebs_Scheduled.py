@@ -1,4 +1,4 @@
-#Function created as target of event that is launched upon ec2 tag match. Runs on an EventB schedule
+#Function created as target of event that is launched upon ec2 tag match. Runs on an EventBridge schedule
 #send its results to sns topic
 import boto3
 import json
@@ -10,7 +10,7 @@ ec2client = boto3.client('ec2')
 snsclient = boto3.client('sns')
 s3client = boto3.client('s3')
 
-
+env_variables = os.environ
 #TODO: create loop functionality
 def lambda_handler(event, context):
 
@@ -47,7 +47,7 @@ def Create_Snapshot(volumeid):
 
 def Get_List():
     response = s3client.get_object(
-        Bucket = 'vmmonitoringsresources-009009',
+        Bucket = 'vmmonitoringsresources-'+ env_variables['buildid'],
         Key = 'Resources/Instance_Ids.json'
     )
     print('get_object for instance ids successful')

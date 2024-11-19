@@ -127,7 +127,7 @@ def Provisions_Stack_Create(instance_data):
 def Get_Instances_Object(instance_data, status):
     try:
         response = s3client.get_object(
-            Bucket = 'vmmonitoringsresources-009009',
+            Bucket = 'vmmonitoringsresources-'+env_variables['buildid'],
             Key = 'Resources/Instance_Ids.json'
         )
         print('get_object for instance ids successful')
@@ -152,7 +152,7 @@ def Put_Object(instance_data, instance_list_object, status):
     try:    
         response = s3client.put_object(
             Body = instanceid_object,
-            Bucket = 'vmmonitoringsresources-009009',
+            Bucket = 'vmmonitoringsresources-'+env_variables['buildid'],
             Key = 'Resources/Instance_Ids.json'
         )
         print('Updated list for instanceids at: '+ 'Resources/Instance_Ids.json')
