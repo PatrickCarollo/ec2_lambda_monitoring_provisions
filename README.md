@@ -1,22 +1,20 @@
 # AWS EC2 Automated Monitoring System
 
-An automated EC2 instance monitoring system that provides tag-based monitoring, automated EBS snapshots, and CPU utilization alerts using AWS CloudFormation, Lambda, EventBridge, and CloudWatch.
+An automated system for EC2 tag-based monitoring, automated EBS snapshots, and CPU utilization alerts using AWS CloudFormation, Lambda, EventBridge, and CloudWatch.
 
 ## Features
-
-- Automatic EC2 instance discovery based on tags
+- Automatic EC2 instance launch discovery based on tags
 - CPU utilization monitoring with automated alerts
-- Scheduled EBS volume snapshots
+- Automatically Scheduled EBS volume snapshots
 - Email notifications for system events
 - Tag-based monitoring deployment
 - Automatic instance reboot on high CPU usage
 
 ## Maintenance and Limitations(10/'24)
 This project was created mainly as an demonstration of tools rather than a hyper-practical implementation. 
-While this system can still be effective and convinient in small-scale projects for automatic basic provisioning, AWS has built-in options that would be utilized in larger projects. For example as a part of an Auto-scaling group there would be visibility in scale-in, scale-out thresholds in terms of CPU util, and have automatic restarts build into policy, as well as simply scale-in new Instances instead of reboots.
+While this system, as is, can be effective in small-scale projects for automatic basic provisioning, at a larger-scale, Load Balancer health checks and scale-out events in Autoscaling could better serve as a detection event.
 
 ## Prerequisites
-
 - AWS Account with appropriate permissions
 - Python 3.7 or higher
 - AWS CLI configured with appropriate credentials
